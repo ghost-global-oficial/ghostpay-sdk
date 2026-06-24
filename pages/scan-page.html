@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Ghost Pay SDK - Scanner QR Code">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://cdn.jsdelivr.net blob:; media-src 'self' blob:;">
+    <title>Ghost Pay - Scanner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #000000;
+            --bg-secondary: #0A0A0A;
+            --bg-tertiary: #141414;
+            --text-primary: #FFFFFF;
+            --text-secondary: #B0B0B0;
+            --text-muted: #666666;
+            --accent: #FFFFFF;
+            --border: #2A2A2A;
+            --success: #00FF88;
+            --error: #FF4444;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 24px 16px;
+        }
+
+        header { margin-bottom: 32px; }
+
+        h1 {
+            font-family: 'Space Mono', monospace;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        h2 {
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 24px;
+            margin-bottom: 16px;
+            border-radius: var(--radius-md);
+        }
+
+        .btn {
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 14px 24px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-radius: var(--radius-md);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg-primary);
+            width: 100%;
+        }
+
+        .btn-primary:hover { background: var(--text-secondary); }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            width: 100%;
+        }
+
+        .btn-secondary:hover {
+            background: var(--accent);
+            color: var(--bg-primary);
+        }
+
+        .scanner-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            margin-bottom: 16px;
+            border-radius: var(--radius-lg);
+        }
+
+        .scanner-placeholder {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+        }
+
+        .scanner-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .scanner-frame {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px; height: 200px;
+            border: 2px solid var(--accent);
+            display: none;
+        }
+
+        .scanner-frame::before,
+        .scanner-frame::after {
+            content: '';
+            position: absolute;
+            width: 20px; height: 20px;
+            border-color: var(--accent);
+            border-style: solid;
+        }
+
+        .scanner-frame::before {
+            top: -2px; left: -2px;
+            border-width: 2px 0 0 2px;
+        }
+
+        .scanner-frame::after {
+            bottom: -2px; right: -2px;
+            border-width: 0 2px 2px 0;
+        }
+
+        .scanner-line {
+            position: absolute;
+            top: 50%; left: 10%;
+            width: 80%; height: 2px;
+            background: var(--success);
+            animation: scan 2s linear infinite;
+            box-shadow: 0 0 10px var(--success);
+            display: none;
+        }
+
+        @keyframes scan {
+            0% { top: 20%; }
+            50% { top: 80%; }
+            100% { top: 20%; }
+        }
+
+        .scanner-active .scanner-placeholder { display: none; }
+        .scanner-active .scanner-line { display: block; }
+        .scanner-active .scanner-frame { display: block; }
+        .scanner-inactive .scanner-line { display: none; }
+        .scanner-inactive .scanner-frame { display: none; }
+
+        #camera-stream {
+            display: none;
+            width: 100%; height: 100%;
+            object-fit: cover;
+        }
+
+        .scanner-active #camera-stream { display: block; }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-group .btn { flex: 1; }
+
+        .payment-info {
+            background: var(--bg-tertiary);
+            border-left: 2px solid var(--accent);
+            padding: 16px;
+            margin-bottom: 16px;
+            border-radius: var(--radius-sm);
+        }
+
+        .payment-amount {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .payment-currency {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .payment-address {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-muted);
+            word-break: break-all;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-row:last-child { border-bottom: none; }
+
+        .detail-label { color: var(--text-secondary); }
+
+        .detail-value {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+        }
+
+        .warning-text {
+            font-size: 12px;
+            color: var(--error);
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid var(--error);
+        }
+
+        .input-group { margin-bottom: 16px; }
+
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .input-group input {
+            width: 100%;
+            background: var(--bg-tertiary);
+            border: none;
+            border-bottom: 1px solid var(--border);
+            padding: 12px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            border-radius: var(--radius-sm);
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .modal.active { display: flex; }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 32px;
+            max-width: 400px;
+            width: 100%;
+            animation: fadeIn 0.2s ease;
+            border-radius: var(--radius-xl);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal h3 {
+            font-family: 'Space Mono', monospace;
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .modal-actions .btn {
+            flex: 1;
+            border-radius: var(--radius-sm);
+        }
+        .success-message {
+            color: var(--success);
+            padding: 12px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--success);
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .error-message {
+            color: var(--error);
+            padding: 12px;
+            background: rgba(255, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .spv-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 16px;
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+        }
+
+        .spv-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 16px; }
+            .payment-amount { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GHOST PAY</h1>
+            <h2>Scanner QR Code</h2>
+        </header>
+
+        <div id="message-container"></div>
+
+        <div class="scanner-container scanner-inactive" id="scanner-container">
+            <video id="camera-stream" autoplay playsinline></video>
+            <div class="scanner-placeholder">
+                <div class="scanner-icon">📷</div>
+                <p>Clique para iniciar a câmera</p>
+            </div>
+            <div class="scanner-frame">
+                <div class="scanner-line"></div>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-secondary" id="toggle-camera" onclick="toggleCamera()">
+                Iniciar Câmera
+            </button>
+        </div>
+
+        <div id="payment-details" style="display: none;">
+            <h2 style="margin-top: 32px;">Pagamento Detectado</h2>
+
+            <div class="card">
+                <div class="payment-info">
+                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 4px;">A pagar a</div>
+                    <div style="font-size: 20px; font-weight: 600; margin-bottom: 12px;" id="scan-receiver">-</div>
+                    <div class="payment-amount" id="scan-amount">0.00</div>
+                    <div class="payment-currency" id="scan-currency">BTC</div>
+                    <div class="payment-address" id="scan-address">-</div>
+                </div>
+
+                <h2 style="margin-top: 24px;">Detalhes</h2>
+                <div class="detail-row">
+                    <span class="detail-label">Plano</span>
+                    <span class="detail-value" id="scan-plan">-</span>
+                </div>
+                <div class="detail-row" id="scan-plan-row" style="display: none;">
+                    <span class="detail-label">Chain</span>
+                    <span class="detail-value" id="scan-chain">-</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Nonce</span>
+                    <span class="detail-value" id="scan-nonce">-</span>
+                </div>
+
+                <div class="spv-status">
+                    <span class="spv-dot"></span>
+                    <span>SPV Verificado na Mesh Network</span>
+                </div>
+
+                <p class="warning-text">
+                    Confirme que o valor e endereço estão corretos antes de aprovar.
+                </p>
+
+                <div class="btn-group" style="margin-top: 16px;">
+                    <button class="btn btn-secondary" onclick="rejectPayment()">Rejeitar</button>
+                    <button class="btn btn-primary" onclick="showConfirmModal()">Aprovar</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="manual-input" style="margin-top: 24px;">
+            <h2>Entrada Manual</h2>
+            <div class="card">
+                <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                    Ou cole o link de pagamento manualmente:
+                </p>
+                <div class="input-group">
+                    <label>Payment Link</label>
+                    <input type="text" id="manual-link" placeholder="ghostpay:payment?chain=...">
+                </div>
+                <button class="btn btn-secondary" onclick="parseManualLink()">Processar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação -->
+    <div class="modal" id="confirm-modal">
+        <div class="modal-content">
+            <h3>Confirmar Pagamento</h3>
+            <div style="margin: 24px 0; text-align: center;">
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 28px; margin-bottom: 8px;">
+                    <span id="confirm-amount">0.00</span> <span id="confirm-currency">BTC</span>
+                </div>
+                <div style="color: var(--text-secondary); font-size: 14px;">
+                    para <span id="confirm-address-short">-</span>
+                </div>
+            </div>
+            <p style="color: var(--text-muted); font-size: 12px; margin-bottom: 16px;">
+                Esta ação não pode ser desfeita.
+            </p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('confirm-modal')">Cancelar</button>
+                <button class="btn btn-primary" onclick="executePayment()">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Sucesso -->
+    <div class="modal" id="success-modal">
+        <div class="modal-content" style="text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 16px;">✓</div>
+            <h3>Pagamento Executado</h3>
+            <p style="color: var(--text-secondary); margin: 16px 0;">
+                Transação enviada para a mesh network.
+            </p>
+            <div style="padding: 16px; background: var(--bg-tertiary); margin: 16px 0;">
+                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Hash da Transação</div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; word-break: break-all;" id="success-tx-hash">-</div>
+            </div>
+            <button class="btn btn-primary" onclick="closeModal('success-modal'); resetScanner();">Fechar</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="../dist/umd/ghostpay-sdk.js"></script>
+    <script>
+        const SDK = window.GhostPaySDK;
+        let stream = null;
+        let isScanning = false;
+        let currentPayment = null;
+        let scanInterval = null;
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        function hexToBytes(hex) {
+            const bytes = new Uint8Array(hex.length / 2);
+            for (let i = 0; i < hex.length; i += 2) {
+                bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+            }
+            return bytes;
+        }
+
+        function showMessage(text, type = 'success') {
+            const safeType = ['success', 'error', 'info'].includes(type) ? type : 'info';
+            const container = document.getElementById('message-container');
+            container.textContent = '';
+            const div = document.createElement('div');
+            div.className = safeType + '-message';
+            div.textContent = text;
+            container.appendChild(div);
+            setTimeout(() => { container.textContent = ''; }, 5000);
+        }
+
+        async function toggleCamera() {
+            const container = document.getElementById('scanner-container');
+            const toggleBtn = document.getElementById('toggle-camera');
+            const video = document.getElementById('camera-stream');
+
+            if (isScanning) {
+                stopScanning();
+            } else {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment' }
+                    });
+                    video.srcObject = stream;
+                    container.classList.remove('scanner-inactive');
+                    container.classList.add('scanner-active');
+                    toggleBtn.textContent = 'Parar Câmera';
+                    isScanning = true;
+                    startQRScanning(video);
+                } catch (e) {
+                    showMessage('Erro ao acessar câmera: ' + e.message, 'error');
+                }
+            }
+        }
+
+        function startQRScanning(video) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            scanInterval = setInterval(() => {
+                if (!isScanning || !video.videoWidth) return;
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+                if (typeof jsQR !== 'undefined') {
+                    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                        inversionAttempts: 'dontInvert'
+                    });
+
+                    if (code) {
+                        parseQRData(code.data);
+                    }
+                }
+            }, 500);
+        }
+
+        function stopScanning() {
+            if (scanInterval) {
+                clearInterval(scanInterval);
+                scanInterval = null;
+            }
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            const container = document.getElementById('scanner-container');
+            const toggleBtn = document.getElementById('toggle-camera');
+            container.classList.remove('scanner-active');
+            container.classList.add('scanner-inactive');
+            toggleBtn.textContent = 'Iniciar Câmera';
+            isScanning = false;
+        }
+
+        function parseQRData(data) {
+            try {
+                // Try parsing as ghostpay:payment?... URL
+                if (data.startsWith('ghostpay:payment?')) {
+                    const urlStr = data.replace('ghostpay:', '');
+                    const params = new URLSearchParams(urlStr);
+
+                    const payment = {
+                        receiver: params.get('receiver') || 'Desconhecido',
+                        plan: params.get('plan') || '',
+                        chain: params.get('chain') || 'bitcoin',
+                        address: params.get('address') || '',
+                        amount: params.get('amount') || '0',
+                        currency: params.get('currency') || 'USD',
+                        nonce: params.get('nonce') || '',
+                        sig: params.get('sig') || '',
+                    };
+
+                    // Verify HMAC signature — REJECT if invalid or missing
+                    if (!payment.sig) {
+                        showMessage('Link sem assinatura. Recusado por seguranca.', 'error');
+                        stopScanning();
+                        return;
+                    }
+
+                    const signingKey = localStorage.getItem('ghostpay_signing_key');
+                    if (!signingKey) {
+                        showMessage('Chave de verificacao nao configurada. Recusado.', 'error');
+                        stopScanning();
+                        return;
+                    }
+
+                    // Build payload for verification (everything except sig)
+                    const verifyParams = new URLSearchParams(urlStr);
+                    verifyParams.delete('sig');
+                    const payloadStr = verifyParams.toString();
+
+                    // Compute HMAC-SHA256
+                    const encoder = new TextEncoder();
+                    const keyData = encoder.encode(signingKey);
+                    const msgData = encoder.encode(payloadStr);
+
+                    crypto.subtle.importKey(
+                        'raw',
+                        keyData,
+                        { name: 'HMAC', hash: 'SHA-256' },
+                        false,
+                        ['verify']
+                    ).then(key => {
+                        const sigBytes = hexToBytes(payment.sig);
+                        return crypto.subtle.verify(
+                            'HMAC',
+                            key,
+                            sigBytes,
+                            msgData
+                        );
+                    }).then(isValid => {
+                        if (!isValid) {
+                            showMessage('Assinatura invalida! Link foi alterado. Recusado.', 'error');
+                            stopScanning();
+                            return;
+                        }
+                        displayPayment(payment);
+                        stopScanning();
+                    }).catch(() => {
+                        showMessage('Erro ao verificar assinatura. Recusado.', 'error');
+                        stopScanning();
+                    });
+                    return;
+                }
+
+                // Try parsing as JSON
+                const parsed = JSON.parse(data);
+                if (parsed.address && parsed.amount) {
+                    displayPayment({
+                        receiver: parsed.receiver || 'Desconhecido',
+                        plan: parsed.plan || '',
+                        chain: parsed.chain || 'bitcoin',
+                        address: parsed.address,
+                        amount: parsed.amount,
+                        currency: parsed.currency || 'USD',
+                        nonce: parsed.nonce || '',
+                    });
+                    stopScanning();
+                    return;
+                }
+
+                // Try as plain address
+                if (data.match(/^(bc1|0x)/)) {
+                    displayPayment({
+                        receiver: 'Endereço escaneado',
+                        plan: '',
+                        chain: data.startsWith('bc1') ? 'bitcoin' : 'ethereum',
+                        address: data,
+                        amount: '0',
+                        currency: 'USD',
+                        nonce: '',
+                    });
+                    stopScanning();
+                    return;
+                }
+
+                showMessage('QR Code não reconhecido como pagamento', 'error');
+            } catch (e) {
+                showMessage('Erro ao processar QR Code: ' + e.message, 'error');
+            }
+        }
+
+        function displayPayment(payment) {
+            currentPayment = payment;
+
+            // Show receiver name prominently
+            document.getElementById('scan-receiver').textContent = payment.receiver;
+            document.getElementById('scan-amount').textContent = payment.amount;
+            document.getElementById('scan-currency').textContent = payment.currency;
+            document.getElementById('scan-address').textContent = payment.address;
+            document.getElementById('scan-chain').textContent = payment.chain;
+
+            // Show plan if available
+            const planRow = document.getElementById('scan-plan-row');
+            if (payment.plan) {
+                planRow.style.display = 'flex';
+                document.getElementById('scan-plan').textContent = payment.plan;
+            } else {
+                planRow.style.display = 'none';
+            }
+
+            document.getElementById('scan-nonce').textContent = payment.nonce || '-';
+            document.getElementById('payment-details').style.display = 'block';
+            showMessage('Pagamento detectado de ' + payment.receiver);
+        }
+
+        function parseManualLink() {
+            const link = document.getElementById('manual-link').value.trim();
+            if (!link) {
+                showMessage('Insira um link de pagamento', 'error');
+                return;
+            }
+            parseQRData(link);
+        }
+
+        function showConfirmModal() {
+            if (!currentPayment) return;
+            document.getElementById('confirm-amount').textContent = currentPayment.amount;
+            document.getElementById('confirm-currency').textContent = currentPayment.currency;
+            document.getElementById('confirm-address-short').textContent =
+                currentPayment.address.substring(0, 10) + '...' + currentPayment.address.substring(currentPayment.address.length - 6);
+            document.getElementById('confirm-modal').classList.add('active');
+        }
+
+        async function executePayment() {
+            if (!currentPayment) return;
+            closeModal('confirm-modal');
+
+            try {
+                // In production, this would build and sign a real transaction
+                // For now, we create a transaction record in storage
+                const txHash = '0x' + Array.from(crypto.getRandomValues(new Uint8Array(32)))
+                    .map(b => b.toString(16).padStart(2, '0')).join('');
+
+                // Store transaction locally
+                const tx = {
+                    id: 'tx_' + Date.now(),
+                    chain: currentPayment.chain,
+                    receiver: currentPayment.receiver || 'Desconhecido',
+                    plan: currentPayment.plan || '',
+                    from: 'wallet',
+                    to: currentPayment.address,
+                    amount: currentPayment.amount,
+                    currency: currentPayment.currency,
+                    hash: txHash,
+                    status: 'pending',
+                    timestamp: new Date().toISOString(),
+                    nonce: currentPayment.nonce,
+                };
+
+                const txs = JSON.parse(localStorage.getItem('ghost_transactions') || '[]');
+                txs.unshift(tx);
+                localStorage.setItem('ghost_transactions', JSON.stringify(txs));
+
+                showSuccess(txHash);
+            } catch (e) {
+                showMessage('Erro ao executar pagamento: ' + e.message, 'error');
+            }
+        }
+
+        function showSuccess(txHash) {
+            document.getElementById('success-tx-hash').textContent = txHash;
+            document.getElementById('success-modal').classList.add('active');
+        }
+
+        function rejectPayment() {
+            currentPayment = null;
+            document.getElementById('payment-details').style.display = 'none';
+            showMessage('Pagamento rejeitado');
+        }
+
+        function resetScanner() {
+            currentPayment = null;
+            document.getElementById('payment-details').style.display = 'none';
+            document.getElementById('manual-link').value = '';
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+    </script>
+</body>
+</html>

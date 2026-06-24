@@ -1,0 +1,17 @@
+node_modules/
+dist/
+*.tgz
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Env files
+.env
+.env.*

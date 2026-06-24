@@ -1,0 +1,39 @@
+# Source code (only dist is published)
+src/
+tests/
+examples/
+node_modules/
+
+# Config files
+*.config.ts
+*.config.js
+*.config.cjs
+tsconfig.json
+.eslintrc.cjs
+.gitignore
+
+# Documentation (keep SDK-README.md)
+MIGRATION.md
+GUIDE.md
+
+# Build artifacts
+dist/**/*.map
+dist/**/*.map
+
+# GitHub
+.github/
+.git/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Env files
+.env
+.env.*

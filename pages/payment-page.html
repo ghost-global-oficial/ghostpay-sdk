@@ -1,0 +1,1437 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Ghost Pay - Checkout de Pagamento">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https://raw.githubusercontent.com; connect-src 'self' https://cdn.jsdelivr.net;">
+    <title>Ghost Pay - Checkout</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0A0A0A;
+            --surface: #111111;
+            --surface-2: #1A1A1A;
+            --surface-3: #222222;
+            --border: #2A2A2A;
+            --border-hover: #3A3A3A;
+            --text: #FFFFFF;
+            --text-secondary: #B0B0B0;
+            --text-muted: #666666;
+            --accent: #FFFFFF;
+            --accent-hover: #E0E0E0;
+            --accent-glow: rgba(255, 255, 255, 0.08);
+            --success: #00FF88;
+            --error: #FF4444;
+            --warning: #FFAA00;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        *::-webkit-scrollbar { width: 0; height: 0; }
+        * { scrollbar-width: none; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .checkout-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 100vh;
+        }
+
+        @media (max-width: 900px) {
+            .checkout-layout { grid-template-columns: 1fr; }
+        }
+
+        /* ======================== */
+        /* LEFT PANEL - PLAN INFO   */
+        /* ======================== */
+
+        .plan-panel {
+            padding: 48px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        @media (max-width: 900px) {
+            .plan-panel {
+                padding: 32px 24px;
+            }
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            z-index: 100;
+        }
+
+        .brand-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: var(--radius-sm);
+            color: #000;
+        }
+
+        .brand-name {
+            font-family: 'Space Mono', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .plan-title {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 8px;
+            line-height: 1.2;
+        }
+
+        .plan-subtitle {
+            font-size: 15px;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+        }
+
+        .plan-card {
+            background: var(--surface);
+            border: 2px solid var(--accent);
+            padding: 24px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-radius: var(--radius-md);
+        }
+
+        .plan-card:hover {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+        }
+
+        .plan-radio {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .plan-card.selected .plan-radio {
+            border-color: var(--accent);
+        }
+
+        .plan-card.selected .plan-radio::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        .fixed-amount-display {
+            text-align: center;
+            padding: 20px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+        }
+
+        .fixed-amount-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1.2;
+        }
+
+        .fixed-amount-currency {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .plan-card.unselected {
+            border-color: var(--border);
+            background: transparent;
+        }
+
+        .plan-details { flex: 1; }
+
+        .plan-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .plan-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .plan-desc .highlight {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .plan-price {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .plan-amount {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        .plan-period {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .features-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin: 32px 0 16px;
+        }
+
+        .features-list {
+            list-style: none;
+        }
+
+        .features-list li {
+            padding: 6px 0;
+            font-size: 14px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .features-list li::before {
+            content: '>';
+            color: var(--accent);
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* ======================== */
+        /* RIGHT PANEL - PAYMENT    */
+        /* ======================== */
+
+        .payment-panel {
+            padding: 48px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        @media (max-width: 900px) {
+            .payment-panel { padding: 32px 24px; }
+        }
+
+        .pay-method-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            border: 1px solid var(--border);
+            margin-bottom: 32px;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .pay-method-tab {
+            padding: 14px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .pay-method-tab.active {
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        .pay-method-tab:not(:last-child) {
+            border-right: 1px solid var(--border);
+        }
+
+        .billed-to {
+            margin-bottom: 24px;
+        }
+
+        .billed-to-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .billed-to-name {
+            font-size: 16px;
+            font-weight: 500;
+            padding: 14px 16px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            width: 100%;
+            border-radius: var(--radius-sm);
+            text-align: center;
+        }
+
+        .payment-detail-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .crypto-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .crypto-option {
+            padding: 16px 12px;
+            border: 1px solid var(--border);
+            background: transparent;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+            color: var(--text);
+            font-family: inherit;
+            border-radius: var(--radius-md);
+        }
+
+        .crypto-option:hover {
+            border-color: var(--border-hover);
+        }
+
+        .crypto-option.active {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+        }
+
+        .crypto-icon {
+            font-size: 24px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .crypto-icon img {
+            width: 28px;
+            height: 28px;
+        }
+
+        .crypto-name {
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .crypto-more {
+            border-style: dashed;
+            opacity: 0.6;
+        }
+
+        .crypto-more:hover {
+            opacity: 1;
+        }
+
+        .coin-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .coin-modal-overlay.active { display: flex; }
+
+        .coin-modal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            animation: modalIn 0.2s ease;
+        }
+
+        .coin-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+        }
+
+        .coin-modal-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .coin-modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+            line-height: 1;
+        }
+
+        .coin-modal-close:hover {
+            color: var(--text);
+        }
+
+        .coin-search {
+            padding: 16px 24px;
+        }
+
+        .coin-search input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+        }
+
+        .coin-search input:focus {
+            outline: none;
+        }
+
+        .coin-search input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .coin-list {
+            max-height: 50vh;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .coin-list-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: background 0.15s;
+            border-radius: var(--radius-sm);
+        }
+
+        .coin-list-item:hover {
+            background: var(--surface-2);
+        }
+
+        .coin-list-item.selected {
+            background: var(--accent-glow);
+        }
+
+        .coin-list-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            background: var(--surface-2);
+        }
+
+        .coin-list-icon img {
+            width: 22px;
+            height: 22px;
+        }
+
+        .coin-list-info {
+            flex: 1;
+        }
+
+        .coin-list-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .coin-list-symbol {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .coin-list-check {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .coin-list-item.selected .coin-list-check {
+            border-color: var(--accent);
+        }
+
+        .coin-list-item.selected .coin-list-check::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        .total-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 24px;
+        }
+
+        .total-label {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .total-amount {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .total-currency {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-left: 4px;
+        }
+
+        .pay-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            letter-spacing: 0.3px;
+            border-radius: var(--radius-md);
+        }
+
+        .pay-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .pay-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .security-note {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 16px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .security-note svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* ======================== */
+        /* QR CODE MODAL            */
+        /* ======================== */
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            max-width: 420px;
+            width: 100%;
+            padding: 40px;
+            text-align: center;
+            animation: modalIn 0.2s ease;
+            border-radius: var(--radius-xl);
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .modal-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
+        .qr-wrapper {
+            display: inline-block;
+            padding: 20px;
+            background: #fff;
+            margin-bottom: 24px;
+            border-radius: var(--radius-lg);
+        }
+
+        .qr-amount-display {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .qr-chain-display {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .qr-address {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            word-break: break-all;
+            padding: 12px;
+            background: var(--surface-2);
+            margin-bottom: 20px;
+            text-align: left;
+            border-radius: var(--radius-sm);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 14px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text);
+            transition: all 0.2s ease;
+            font-family: inherit;
+            border-radius: var(--radius-sm);
+        }
+
+        .modal-btn:hover {
+            border-color: var(--text-muted);
+        }
+
+        .modal-btn.primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #000;
+        }
+
+        .modal-btn.primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 500;
+            border: 1px solid;
+            margin-top: 20px;
+            border-radius: 20px;
+        }
+
+        .status-badge.pending {
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+
+        .status-badge.confirmed {
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .status-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .status-badge.pending .status-dot {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            padding: 12px 24px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            font-size: 14px;
+            z-index: 2000;
+            transition: transform 0.3s ease;
+            border-radius: var(--radius-md);
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.success { border-color: var(--success); color: var(--success); }
+        .toast.error { border-color: var(--error); color: var(--error); }
+    </style>
+</head>
+<body>
+    <div class="checkout-layout">
+
+        <!-- LEFT: Plan Info (set by receiver) -->
+        <div class="plan-panel">
+            <div class="brand">
+                <div class="brand-icon">G</div>
+                <div class="brand-name" id="receiver-name">GHOST PAY</div>
+            </div>
+
+            <h1 class="plan-title" id="plan-title">Plano Pro</h1>
+            <p class="plan-subtitle" id="plan-subtitle">Acesso ilimitado a todas as ferramentas de produtividade.</p>
+
+            <div id="plans-container">
+                <!-- Plans loaded dynamically from receiver config -->
+            </div>
+
+            <h3 class="features-title">O que vais desbloquear</h3>
+            <ul class="features-list" id="features-list">
+                <li>Acesso ilimitado a todas as ferramentas</li>
+                <li>Trabalho colaborativo em tempo real</li>
+                <li>SincronizaÃ§Ã£o entre dispositivos</li>
+                <li>Suporte prioritÃ¡rio</li>
+            </ul>
+        </div>
+
+        <!-- RIGHT: Payment -->
+        <div class="payment-panel">
+            <div class="pay-method-tabs">
+                <button class="pay-method-tab active" data-method="crypto" onclick="switchTab('crypto')">Criptomoeda</button>
+                <button class="pay-method-tab" data-method="qrcode" onclick="switchTab('qrcode')">QR Code</button>
+            </div>
+
+            <div class="billed-to">
+                <div class="billed-to-label">A pagar a</div>
+                <div class="billed-to-name" id="billed-to">-</div>
+            </div>
+
+            <!-- VIEW: Crypto -->
+            <div id="view-crypto">
+                <div class="payment-detail-title">Selecionar Moeda</div>
+
+                <div class="crypto-options" id="crypto-options">
+                    <button class="crypto-option active" data-chain="bitcoin">
+                        <div class="crypto-icon"><img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/btc.svg" alt="BTC" width="28" height="28"></div>
+                        <div class="crypto-name">Bitcoin</div>
+                    </button>
+                    <button class="crypto-option" data-chain="ethereum">
+                        <div class="crypto-icon"><img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/eth.svg" alt="ETH" width="28" height="28"></div>
+                        <div class="crypto-name">Ethereum</div>
+                    </button>
+                    <button class="crypto-option" data-chain="solana">
+                        <div class="crypto-icon"><img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/sol.svg" alt="SOL" width="28" height="28"></div>
+                        <div class="crypto-name">Solana</div>
+                    </button>
+                    <button class="crypto-option" data-chain="polygon">
+                        <div class="crypto-icon"><img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/matic.svg" alt="MATIC" width="28" height="28"></div>
+                        <div class="crypto-name">Polygon</div>
+                    </button>
+                    <button class="crypto-option" data-chain="bsc">
+                        <div class="crypto-icon"><img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/bnb.svg" alt="BNB" width="28" height="28"></div>
+                        <div class="crypto-name">BNB</div>
+                    </button>
+                    <button class="crypto-option crypto-more" onclick="openCoinModal()">
+                        <div class="crypto-icon">+</div>
+                        <div class="crypto-name">More</div>
+                    </button>
+                </div>
+
+                <div class="total-section">
+                    <div class="total-label">Total</div>
+                    <div>
+                        <span class="total-amount" id="total-amount">0.00</span>
+                        <span class="total-currency" id="total-currency">USD</span>
+                    </div>
+                </div>
+
+                <button class="pay-btn" id="pay-btn" onclick="handlePayment()">
+                    Pagar Agora
+                </button>
+            </div>
+
+            <!-- VIEW: QR Code -->
+            <div id="view-qrcode" style="display: none;">
+                <div style="display: flex; flex-direction: column; align-items: center; padding: 24px 0;">
+                    <div class="qr-wrapper" id="qr-inline-wrapper" style="display: none;">
+                        <ghost-qrcode id="qr-code-inline" data="" size="lg"></ghost-qrcode>
+                    </div>
+                    <div id="qr-inline-placeholder" style="text-align: center; color: var(--text-muted); padding: 40px 0;">
+                        <div style="font-size: 32px; margin-bottom: 12px; opacity: 0.4;">ðŸ“‹</div>
+                        <p>Seleciona um plano para gerar o QR Code</p>
+                    </div>
+                    <div id="qr-inline-info" style="display: none; text-align: center; width: 100%;">
+                        <div class="qr-amount-display" id="qr-amount-inline">0.00</div>
+                        <div class="qr-chain-display" id="qr-chain-inline">Bitcoin (BTC)</div>
+                        <div class="qr-address" id="qr-address-inline">-</div>
+                        <div style="display: flex; gap: 12px; margin-top: 16px;">
+                            <button class="modal-btn" onclick="copyAddress()">Copiar EndereÃ§o</button>
+                            <button class="modal-btn primary" onclick="copyPaymentLink()">Copiar Link</button>
+                        </div>
+                        <div class="status-badge pending" id="payment-status-inline" style="margin-top: 16px;">
+                            <span class="status-dot"></span>
+                            <span id="status-text-inline">Aguardando pagamento</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="security-note">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                Pagamento encriptado e processado de forma segura via mesh network
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div class="modal-overlay" id="qr-modal">
+        <div class="modal-box">
+            <div class="modal-title">Pagar com Criptomoeda</div>
+            <div class="modal-subtitle">Escaneia o QR Code ou copia o endereÃ§o abaixo</div>
+
+            <div class="qr-wrapper">
+                <ghost-qrcode id="qr-code" data="" size="lg"></ghost-qrcode>
+            </div>
+
+            <div class="qr-amount-display" id="qr-amount-display">0.00</div>
+            <div class="qr-chain-display" id="qr-chain-display">Bitcoin (BTC)</div>
+
+            <div class="qr-address" id="qr-address-display">-</div>
+
+            <div class="modal-actions">
+                <button class="modal-btn" onclick="copyAddress()">Copiar EndereÃ§o</button>
+                <button class="modal-btn primary" onclick="copyPaymentLink()">Copiar Link</button>
+            </div>
+
+            <div class="status-badge pending" id="payment-status">
+                <span class="status-dot"></span>
+                <span id="status-text">Aguardando pagamento</span>
+            </div>
+
+            <button class="modal-btn" style="margin-top: 16px; width: 100%;" onclick="closeModal()">Fechar</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <!-- Coin Selection Modal -->
+    <div class="coin-modal-overlay" id="coin-modal" onclick="if(event.target===this)closeCoinModal()">
+        <div class="coin-modal">
+            <div class="coin-modal-header">
+                <div class="coin-modal-title">Selecionar Moeda</div>
+                <button class="coin-modal-close" onclick="closeCoinModal()">&times;</button>
+            </div>
+            <div class="coin-search">
+                <input type="text" id="coin-search-input" placeholder="Pesquisar moeda..." oninput="filterCoins()">
+            </div>
+            <div class="coin-list" id="coin-list"></div>
+        </div>
+    </div>
+
+    <script src="../components/ghost-qrcode.js"></script>
+    <script src="../dist/umd/ghostpay-sdk.js"></script>
+    <script>
+        const SDK = window.GhostPaySDK;
+
+        // XSS prevention: escape HTML entities
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // ============================================
+        // RECEIVER CONFIGURATION via SDK Checkout API
+        // ============================================
+
+        const checkout = SDK.Checkout.fromJSON({
+          receiver: {
+            name: 'GhostPay',
+            email: 'pay@ghostpay.io',
+          },
+          mode: 'fixed',
+          plans: [
+            {
+              id: 'fixed',
+              name: 'Total a pagar',
+              description: 'Pagamento rápido.',
+              price: 25.00,
+              currency: 'USD',
+              selected: true,
+            },
+          ],
+          supportedChains: ['bitcoin', 'ethereum', 'solana', 'polygon', 'bsc'],
+        });
+
+        // ============================================
+        // STATE
+        // ============================================
+
+        let selectedPlan = checkout.selectedPlan;
+        let selectedChain = checkout.selectedChain;
+        let receiverAddress = null;
+        let paymentData = null;
+
+        // ============================================
+        // INIT
+        // ============================================
+
+        async function init() {
+            // Load receiver's wallet address
+            const stored = localStorage.getItem('ghost_wallet_encrypted');
+            if (stored) {
+                try {
+                    const password = prompt('Senha da wallet do recebedor:');
+                    if (password) {
+                        const wallet = await SDK.Wallet.importEncrypted(stored, password);
+                        receiverAddress = wallet.getAddress(selectedChain);
+                    }
+                } catch (e) {
+                    console.log('Wallet nÃ£o configurada para recebedor');
+                }
+            }
+
+            renderReceiverInfo();
+            renderPlans();
+            renderFeatures();
+            setupEventListeners();
+            updateTotal();
+        }
+
+        // ============================================
+        // RENDER
+        // ============================================
+
+        function renderReceiverInfo() {
+            document.getElementById('receiver-name').textContent = checkout.receiver.name;
+            document.getElementById('billed-to').textContent = checkout.receiver.name;
+
+            const isSingle = checkout.plans.length <= 1 || checkout.mode === 'fixed';
+            const planTitle = document.getElementById('plan-title');
+            const planSubtitle = document.getElementById('plan-subtitle');
+
+            if (isSingle) {
+                const plan = checkout.plans[0];
+                planTitle.textContent = plan.name || 'Pagamento';
+                planSubtitle.textContent = plan.description || '';
+            } else {
+                planTitle.textContent = 'Escolher Plano';
+                planSubtitle.textContent = checkout.plans[0]?.description || '';
+            }
+        }
+
+        function renderPlans() {
+            const container = document.getElementById('plans-container');
+            const isSingle = checkout.plans.length <= 1 || checkout.mode === 'fixed';
+
+            if (isSingle) {
+                const plan = checkout.plans[0];
+                container.innerHTML = `
+                    <div class="fixed-amount-display">
+                        <div class="fixed-amount-value">$${plan.price.toFixed(2)}</div>
+                        <div class="fixed-amount-currency">${plan.currency}</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = checkout.plans.map(plan => `
+                <div class="plan-card ${(checkout.selectedPlan?.id === plan.id) ? 'selected' : 'unselected'}" data-plan-id="${escapeHtml(plan.id)}" onclick="selectPlan('${escapeHtml(plan.id)}')">
+                    <div class="plan-radio"></div>
+                    <div class="plan-details">
+                        <div class="plan-name">${escapeHtml(plan.name)}</div>
+                        <div class="plan-desc">${escapeHtml(plan.description)}</div>
+                    </div>
+                    <div class="plan-price">
+                        <div class="plan-amount">$${plan.price.toFixed(2)}</div>
+                        <div class="plan-period">${escapeHtml(plan.period)}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderFeatures() {
+            const list = document.getElementById('features-list');
+            const featuresTitle = document.querySelector('.features-title');
+            const isSingle = checkout.plans.length <= 1 || checkout.mode === 'fixed';
+
+            if (isSingle) {
+                const features = checkout.selectedPlan?.features;
+                if (features && features.length > 0) {
+                    list.innerHTML = features.map(f => `<li>${escapeHtml(f)}</li>`).join('');
+                } else {
+                    featuresTitle.style.display = 'none';
+                    list.style.display = 'none';
+                }
+                return;
+            }
+
+            featuresTitle.style.display = '';
+            list.style.display = '';
+            const features = checkout.selectedPlan?.features || [
+                'Todas as ferramentas, sem limites',
+                'Trabalho colaborativo em tempo real',
+                'Sincronização entre dispositivos',
+                'Suporte prioritário com resposta rápida',
+            ];
+            list.innerHTML = features.map(f => `<li>${escapeHtml(f)}</li>`).join('');
+        }
+
+        function updateTotal() {
+            if (!selectedPlan) return;
+            document.getElementById('total-amount').textContent = '$' + selectedPlan.price.toFixed(2);
+            document.getElementById('total-currency').textContent = selectedPlan.currency;
+        }
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+
+        function setupEventListeners() {
+            // Plan selection
+            document.querySelectorAll('.plan-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    selectPlan(card.dataset.planId);
+                });
+            });
+
+            // Crypto selection
+            document.querySelectorAll('.crypto-option').forEach(opt => {
+                opt.addEventListener('click', () => {
+                    document.querySelectorAll('.crypto-option').forEach(o => o.classList.remove('active'));
+                    opt.classList.add('active');
+                    selectedChain = opt.dataset.chain;
+                    updateReceiverAddress();
+                });
+            });
+        }
+
+        function switchTab(method) {
+            document.querySelectorAll('.pay-method-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[data-method="${method}"]`).classList.add('active');
+
+            const viewCrypto = document.getElementById('view-crypto');
+            const viewQR = document.getElementById('view-qrcode');
+
+            if (method === 'qrcode') {
+                viewCrypto.style.display = 'none';
+                viewQR.style.display = 'block';
+                generateInlineQR();
+            } else {
+                viewCrypto.style.display = 'block';
+                viewQR.style.display = 'none';
+            }
+        }
+
+        function generateInlineQR() {
+            if (!selectedPlan) {
+                document.getElementById('qr-inline-placeholder').style.display = 'block';
+                document.getElementById('qr-inline-wrapper').style.display = 'none';
+                document.getElementById('qr-inline-info').style.display = 'none';
+                return;
+            }
+
+            checkout.selectChain(selectedChain);
+            const address = receiverAddress || 'EndereÃ§o nÃ£o configurado';
+            const data = checkout.buildCheckoutData(address);
+
+            paymentData = {
+                receiver: data.receiver.name,
+                plan: data.plan?.id || '',
+                amount: data.amount,
+                currency: data.currency,
+                chain: data.chain,
+                address: data.address,
+                paymentLink: data.paymentLink,
+                nonce: data.nonce,
+            };
+
+            document.getElementById('qr-inline-placeholder').style.display = 'none';
+            document.getElementById('qr-inline-wrapper').style.display = 'inline-block';
+            document.getElementById('qr-inline-info').style.display = 'block';
+
+            document.getElementById('qr-amount-inline').textContent = `$${data.amount.toFixed(2)} ${data.currency}`;
+            document.getElementById('qr-chain-inline').textContent = getChainLabel(data.chain);
+            document.getElementById('qr-address-inline').textContent = address;
+
+            const qr = document.getElementById('qr-code-inline');
+            qr.setAttribute('data', data.paymentLink);
+        }
+
+        function selectPlan(planId) {
+            selectedPlan = checkout.selectPlan(planId);
+
+            document.querySelectorAll('.plan-card').forEach(card => {
+                if (card.dataset.planId === planId) {
+                    card.classList.add('selected');
+                    card.classList.remove('unselected');
+                } else {
+                    card.classList.remove('selected');
+                    card.classList.add('unselected');
+                }
+            });
+
+            updateTotal();
+            renderFeatures();
+
+            // Regenerate QR if QR tab is active
+            const qrTab = document.querySelector('[data-method="qrcode"]');
+            if (qrTab && qrTab.classList.contains('active')) {
+                generateInlineQR();
+            }
+        }
+
+        async function updateReceiverAddress() {
+            const stored = localStorage.getItem('ghost_wallet_encrypted');
+            if (!stored) return;
+
+            try {
+                const password = prompt('Senha da wallet:');
+                if (!password) return;
+
+                const wallet = await SDK.Wallet.importEncrypted(stored, password);
+                receiverAddress = wallet.getAddress(selectedChain);
+            } catch (e) {
+                console.error('Erro ao obter endereÃ§o:', e);
+            }
+        }
+
+        // ============================================
+        // PAYMENT
+        // ============================================
+
+        async function handlePayment() {
+            if (!selectedPlan) {
+                showToast('Selecione um plano', 'error');
+                return;
+            }
+
+            if (!receiverAddress) {
+                showToast('EndereÃ§o do recebedor nÃ£o configurado', 'error');
+                return;
+            }
+
+            checkout.selectChain(selectedChain);
+            const data = checkout.buildCheckoutData(receiverAddress);
+
+            paymentData = {
+                receiver: data.receiver.name,
+                receiverEmail: data.receiver.email,
+                plan: data.plan?.id || '',
+                planName: data.plan?.name || '',
+                amount: data.amount,
+                currency: data.currency,
+                chain: data.chain,
+                address: data.address,
+                timestamp: data.timestamp,
+                nonce: data.nonce,
+                paymentLink: data.paymentLink,
+            };
+
+            showQRModal();
+        }
+
+        function showQRModal() {
+            const modal = document.getElementById('qr-modal');
+            modal.classList.add('active');
+
+            document.getElementById('qr-amount-display').textContent = `$${selectedPlan.price.toFixed(2)} ${selectedPlan.currency}`;
+            document.getElementById('qr-chain-display').textContent = getChainLabel(selectedChain);
+            document.getElementById('qr-address-display').textContent = receiverAddress || 'EndereÃ§o nÃ£o configurado';
+
+            // Generate QR code
+            const qr = document.getElementById('qr-code');
+            qr.setAttribute('data', paymentData.paymentLink);
+
+            // Start status polling
+            startStatusPolling();
+        }
+
+        function getChainLabel(chain) {
+            const labels = {
+                bitcoin: 'Bitcoin (BTC)',
+                ethereum: 'Ethereum (ETH)',
+                solana: 'Solana (SOL)',
+                polygon: 'Polygon (MATIC)',
+                bsc: 'BNB Chain (BNB)',
+            };
+            return labels[chain] || chain;
+        }
+
+        function startStatusPolling() {
+            // In production, this would poll the mesh network or blockchain
+            // For now, we just simulate checking localStorage
+            setInterval(() => {
+                if (!paymentData) return;
+
+                const txs = JSON.parse(localStorage.getItem('ghost_transactions') || '[]');
+                const found = txs.find(tx =>
+                    tx.nonce === paymentData.nonce ||
+                    (tx.to === receiverAddress && tx.amount === String(selectedPlan.price))
+                );
+
+                if (found && found.status === 'confirmed') {
+                    updatePaymentStatus('confirmed');
+                }
+            }, 5000);
+        }
+
+        function updatePaymentStatus(status) {
+            const badge = document.getElementById('payment-status');
+            const text = document.getElementById('status-text');
+
+            badge.className = 'status-badge ' + status;
+            text.textContent = status === 'confirmed' ? 'Pagamento confirmado' : 'Aguardando pagamento';
+        }
+
+        // ============================================
+        // UTILITIES
+        // ============================================
+
+        async function copyAddress() {
+            if (!receiverAddress) return;
+            try {
+                await navigator.clipboard.writeText(receiverAddress);
+                showToast('EndereÃ§o copiado!');
+            } catch (e) {
+                showToast('Erro ao copiar', 'error');
+            }
+        }
+
+        async function copyPaymentLink() {
+            if (!paymentData) return;
+            try {
+                await navigator.clipboard.writeText(paymentData.paymentLink);
+                showToast('Link de pagamento copiado!');
+            } catch (e) {
+                showToast('Erro ao copiar', 'error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('qr-modal').classList.remove('active');
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type + ' show';
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // ============================================
+        // COIN MODAL
+        // ============================================
+
+        const MORE_COINS = [
+            { chain: 'avalanche', name: 'Avalanche', symbol: 'AVAX', icon: '<img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/avax.svg" width="20" height="20" alt="AVAX">', color: '#E84142' },
+            { chain: 'cardano', name: 'Cardano', symbol: 'ADA', icon: '<img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/ada.svg" width="20" height="20" alt="ADA">', color: '#0033AD' },
+            { chain: 'polkadot', name: 'Polkadot', symbol: 'DOT', icon: '<img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/dot.svg" width="20" height="20" alt="DOT">', color: '#E6007A' },
+            { chain: 'dogecoin', name: 'Dogecoin', symbol: 'DOGE', icon: '<img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/doge.svg" width="20" height="20" alt="DOGE">', color: '#C2A633' },
+            { chain: 'tron', name: 'Tron', symbol: 'TRX', icon: '<img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/trx.svg" width="20" height="20" alt="TRX">', color: '#FF0013' },
+            { chain: 'cosmos', name: 'Cosmos', symbol: 'ATOM', icon: '<img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/atom.svg" width="20" height="20" alt="ATOM">', color: '#2E3148' },
+            { chain: 'litecoin', name: 'Litecoin', symbol: 'LTC', icon: '<img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/ltc.svg" width="20" height="20" alt="LTC">', color: '#BFBBBB' },
+            { chain: 'near', name: 'NEAR Protocol', symbol: 'NEAR', icon: '<span style="font-weight:700;font-size:14px;">N</span>', color: '#00C08B' },
+            { chain: 'arbitrum', name: 'Arbitrum', symbol: 'ARB', icon: '<span style="font-weight:700;font-size:14px;">A</span>', color: '#28A0F0' },
+            { chain: 'optimism', name: 'Optimism', symbol: 'OP', icon: '<span style="font-weight:700;font-size:14px;">O</span>', color: '#FF0420' },
+            { chain: 'aptos', name: 'Aptos', symbol: 'APT', icon: '<span style="font-weight:700;font-size:14px;">A</span>', color: '#4CD7B0' },
+            { chain: 'sui', name: 'Sui', symbol: 'SUI', icon: '<span style="font-weight:700;font-size:14px;">S</span>', color: '#6FBCF0' },
+            { chain: 'celestia', name: 'Celestia', symbol: 'TIA', icon: '<span style="font-weight:700;font-size:14px;">T</span>', color: '#7B2BF9' },
+            { chain: 'sei', name: 'Sei', symbol: 'SEI', icon: '<span style="font-weight:700;font-size:14px;">S</span>', color: '#9B1C2E' },
+            { chain: 'injective', name: 'Injective', symbol: 'INJ', icon: '<span style="font-weight:700;font-size:14px;">I</span>', color: '#0082FF' },
+            { chain: 'fantom', name: 'Fantom', symbol: 'FTM', icon: '<span style="font-weight:700;font-size:14px;">F</span>', color: '#1969FF' },
+            { chain: 'algorand', name: 'Algorand', symbol: 'ALGO', icon: '<img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/algo.svg" width="20" height="20" alt="ALGO">', color: '#000000' },
+            { chain: 'stellar', name: 'Stellar', symbol: 'XLM', icon: '<img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/xlm.svg" width="20" height="20" alt="XLM">', color: '#14B6E7' },
+            { chain: 'monero', name: 'Monero', symbol: 'XMR', icon: '<img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/xmr.svg" width="20" height="20" alt="XMR">', color: '#FF6600' },
+            { chain: 'dash', name: 'Dash', symbol: 'DASH', icon: '<img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/dash.svg" width="20" height="20" alt="DASH">', color: '#008DE4' },
+        ];
+
+        const COIN_ICONS_WITH_SVG = ['btc','eth','sol','matic','bnb','avax','ada','dot','doge','trx','atom','ltc','algo','xlm','xmr','dash'];
+
+        function openCoinModal() {
+            document.getElementById('coin-modal').classList.add('active');
+            renderCoinList('');
+            document.getElementById('coin-search-input').value = '';
+            document.getElementById('coin-search-input').focus();
+        }
+
+        function closeCoinModal() {
+            document.getElementById('coin-modal').classList.remove('active');
+        }
+
+        function filterCoins() {
+            const query = document.getElementById('coin-search-input').value.toLowerCase();
+            renderCoinList(query);
+        }
+
+        function renderCoinList(query) {
+            const list = document.getElementById('coin-list');
+            const allCoins = [...MORE_COINS];
+
+            const filtered = query
+                ? allCoins.filter(c => c.name.toLowerCase().includes(query) || c.symbol.toLowerCase().includes(query))
+                : allCoins;
+
+            list.innerHTML = filtered.map(coin => `
+                <div class="coin-list-item ${selectedChain === coin.chain ? 'selected' : ''}" onclick="selectMoreCoin('${coin.chain}')">
+                    <div class="coin-list-icon" style="background: ${coin.color};">${coin.icon}</div>
+                    <div class="coin-list-info">
+                        <div class="coin-list-name">${coin.name}</div>
+                        <div class="coin-list-symbol">${coin.symbol}</div>
+                    </div>
+                    <div class="coin-list-check"></div>
+                </div>
+            `).join('');
+        }
+
+        function selectMoreCoin(chain) {
+            const coin = MORE_COINS.find(c => c.chain === chain);
+            if (!coin) return;
+
+            selectedChain = chain;
+
+            // Update the main crypto options to show the selected coin
+            const optionsContainer = document.getElementById('crypto-options');
+            // Remove active from all
+            optionsContainer.querySelectorAll('.crypto-option').forEach(o => o.classList.remove('active'));
+
+            // Check if coin is already in the main grid
+            const existingBtn = optionsContainer.querySelector(`[data-chain="${chain}"]`);
+            if (existingBtn) {
+                existingBtn.classList.add('active');
+            } else {
+                // Replace the "More" button with this coin, move More to end
+                const moreBtn = optionsContainer.querySelector('.crypto-more');
+                if (moreBtn) {
+                    const newBtn = document.createElement('button');
+                    newBtn.className = 'crypto-option active';
+                    newBtn.setAttribute('data-chain', chain);
+                    const iconHtml = COIN_ICONS_WITH_SVG.includes(coin.symbol.toLowerCase())
+                        ? `<img src="https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/svg/color/${coin.symbol.toLowerCase()}.svg" width="28" height="28" alt="${coin.symbol}">`
+                        : `<span style="font-weight:700;font-size:14px;color:#fff;">${coin.symbol.charAt(0)}</span>`;
+                    newBtn.innerHTML = `
+                        <div class="crypto-icon">${iconHtml}</div>
+                        <div class="crypto-name">${coin.symbol}</div>
+                    `;
+                    newBtn.onclick = () => {
+                        optionsContainer.querySelectorAll('.crypto-option').forEach(o => o.classList.remove('active'));
+                        newBtn.classList.add('active');
+                        selectedChain = chain;
+                        updateReceiverAddress();
+                    };
+                    optionsContainer.insertBefore(newBtn, moreBtn);
+                }
+            }
+
+            updateReceiverAddress();
+            closeCoinModal();
+            showToast(`${coin.name} selecionado`);
+
+            // Regenerate QR if QR tab is active
+            const qrTab = document.querySelector('[data-method="qrcode"]');
+            if (qrTab && qrTab.classList.contains('active')) {
+                generateInlineQR();
+            }
+        }
+
+        // Initialize
+        init();
+    </script>
+</body>
+</html>
+

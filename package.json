@@ -1,0 +1,149 @@
+{
+  "name": "@ghostpay/sdk",
+  "version": "1.0.0",
+  "description": "Ghost Pay SDK - Decentralized P2P Cryptocurrency Payment System with Mesh Network",
+  "type": "module",
+  "main": "./dist/cjs/index.cjs.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "browser": "./dist/umd/ghostpay-sdk.js",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.cjs.js"
+    },
+    "./wallet": {
+      "types": "./dist/types/core/wallet.d.ts",
+      "import": "./dist/esm/core/wallet.js",
+      "require": "./dist/cjs/core/wallet.js"
+    },
+    "./network": {
+      "types": "./dist/types/core/network.d.ts",
+      "import": "./dist/esm/core/network.js",
+      "require": "./dist/cjs/core/network.js"
+    },
+    "./crypto": {
+      "types": "./dist/types/core/crypto.d.ts",
+      "import": "./dist/esm/core/crypto.js",
+      "require": "./dist/cjs/core/crypto.js"
+    },
+    "./transaction": {
+      "types": "./dist/types/core/transaction.d.ts",
+      "import": "./dist/esm/core/transaction.js",
+      "require": "./dist/cjs/core/transaction.js"
+    },
+    "./storage": {
+      "types": "./dist/types/core/storage.d.ts",
+      "import": "./dist/esm/core/storage.js",
+      "require": "./dist/cjs/core/storage.js"
+    },
+    "./pow": {
+      "types": "./dist/types/core/pow.d.ts",
+      "import": "./dist/esm/core/pow.js",
+      "require": "./dist/cjs/core/pow.js"
+    },
+    "./checkout": {
+      "types": "./dist/types/core/checkout.d.ts",
+      "import": "./dist/esm/core/checkout.js",
+      "require": "./dist/cjs/core/checkout.js"
+    },
+    "./webhook": {
+      "types": "./dist/types/core/webhook.d.ts",
+      "import": "./dist/esm/core/webhook.js",
+      "require": "./dist/cjs/core/webhook.js"
+    },
+    "./broadcaster": {
+      "types": "./dist/types/core/broadcaster.d.ts",
+      "import": "./dist/esm/core/broadcaster.js",
+      "require": "./dist/cjs/core/broadcaster.js"
+    },
+    "./privacy": {
+      "types": "./dist/types/core/privacy.d.ts",
+      "import": "./dist/esm/core/privacy.js",
+      "require": "./dist/cjs/core/privacy.js"
+    }
+  },
+  "files": [
+    "dist",
+    "components",
+    "pages"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18.0.0",
+    "browsers": ">=90.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run build:esm && npm run build:cjs && npm run build:umd && npm run build:types",
+    "build:esm": "vite build --mode development",
+    "build:cjs": "vite build --mode cjs",
+    "build:umd": "vite build --mode production",
+    "build:types": "tsc --emitDeclarationOnly",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "example:wallet": "npx tsx examples/01-basic-wallet.ts",
+    "example:transactions": "npx tsx examples/02-transactions.ts",
+    "example:storage": "npx tsx examples/03-storage.ts",
+    "example:pow": "npx tsx examples/04-proof-of-work.ts",
+    "example:network": "npx tsx examples/05-mesh-network.ts",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "keywords": [
+    "cryptocurrency",
+    "bitcoin",
+    "ethereum",
+    "solana",
+    "polygon",
+    "bsc",
+    "p2p",
+    "mesh-network",
+    "web3",
+    "wallet",
+    "payment",
+    "decentralized",
+    "webrtc",
+    "checkout",
+    "invoice",
+    "billing"
+  ],
+  "author": "Ghost Pay",
+  "license": "MIT",
+  "homepage": "https://github.com/ghost-global-oficial/ghostpay-sdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ghost-global-oficial/ghostpay-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ghost-global-oficial/ghostpay-sdk/issues"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^3.1.0",
+    "@noble/hashes": "^1.8.0",
+    "@noble/secp256k1": "^2.3.0",
+    "@scure/base": "^1.2.4",
+    "@scure/bip32": "^1.7.0",
+    "@scure/bip39": "^1.5.4",
+    "jsqr": "^1.4.0",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@typescript-eslint/eslint-plugin": "^8.32.0",
+    "@typescript-eslint/parser": "^8.32.0",
+    "@vitest/coverage-v8": "^3.1.3",
+    "eslint": "^9.27.0",
+    "tsx": "^4.22.4",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^3.1.3"
+  }
+}
