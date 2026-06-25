@@ -973,20 +973,6 @@
         // ============================================
 
         async function init() {
-            // Load receiver's wallet address
-            const stored = localStorage.getItem('ghost_wallet_encrypted');
-            if (stored) {
-                try {
-                    const password = prompt('Senha da wallet do recebedor:');
-                    if (password) {
-                        const wallet = await SDK.Wallet.importEncrypted(stored, password);
-                        receiverAddress = wallet.getAddress(selectedChain);
-                    }
-                } catch (e) {
-                    console.log('Wallet nÃ£o configurada para recebedor');
-                }
-            }
-
             renderReceiverInfo();
             renderPlans();
             renderFeatures();
@@ -1177,19 +1163,8 @@
             }
         }
 
-        async function updateReceiverAddress() {
-            const stored = localStorage.getItem('ghost_wallet_encrypted');
-            if (!stored) return;
-
-            try {
-                const password = prompt('Senha da wallet:');
-                if (!password) return;
-
-                const wallet = await SDK.Wallet.importEncrypted(stored, password);
-                receiverAddress = wallet.getAddress(selectedChain);
-            } catch (e) {
-                console.error('Erro ao obter endereÃ§o:', e);
-            }
+        function updateReceiverAddress() {
+            receiverAddress = paramAddress || null;
         }
 
         // ============================================
@@ -1202,13 +1177,8 @@
                 return;
             }
 
-            if (!receiverAddress) {
-                showToast('EndereÃ§o do recebedor nÃ£o configurado', 'error');
-                return;
-            }
-
             checkout.selectChain(selectedChain);
-            const data = checkout.buildCheckoutData(receiverAddress);
+            const data = checkout.buildCheckoutData(receiverAddress || '');
 
             paymentData = {
                 receiver: data.receiver.name,
