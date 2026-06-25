@@ -1138,8 +1138,9 @@
                 document.getElementById('qr-chain-inline').textContent = getChainLabel(data.chain);
                 document.getElementById('qr-address-inline').textContent = address;
 
+                const qrData = `ghostpay:payment?receiver=${encodeURIComponent(data.receiver.name)}&amount=${data.amount}&currency=${data.currency}&chain=${data.chain}&address=${encodeURIComponent(data.address)}&nonce=${data.nonce}`;
                 const qr = document.getElementById('qr-code-inline');
-                qr.setAttribute('data', data.paymentLink);
+                qr.setAttribute('data', qrData);
             } catch (e) {
                 console.error('Erro ao gerar QR Code:', e);
             }
@@ -1220,9 +1221,10 @@
             document.getElementById('qr-chain-display').textContent = getChainLabel(selectedChain);
             document.getElementById('qr-address-display').textContent = receiverAddress || 'EndereÃ§o nÃ£o configurado';
 
-            // Generate QR code
+            // Generate QR code with ghostpay: URI for native app
+            const qrData = `ghostpay:payment?receiver=${encodeURIComponent(paymentData.receiver)}&amount=${paymentData.amount}&currency=${paymentData.currency}&chain=${paymentData.chain}&address=${encodeURIComponent(paymentData.address)}&nonce=${paymentData.nonce}`;
             const qr = document.getElementById('qr-code');
-            qr.setAttribute('data', paymentData.paymentLink);
+            qr.setAttribute('data', qrData);
 
             // Start status polling
             startStatusPolling();
