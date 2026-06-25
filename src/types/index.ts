@@ -204,7 +204,7 @@ export interface PoWResult {
 // Checkout / Payment Config Types
 // ============================================
 
-export type PaymentMode = 'fixed' | 'custom' | 'plans';
+export type PaymentMode = 'fixed' | 'custom' | 'plans' | 'multi';
 
 export interface ReceiverInfo {
   name: string;
