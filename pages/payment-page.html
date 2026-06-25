@@ -1113,31 +1113,37 @@
                 return;
             }
 
-            checkout.selectChain(selectedChain);
-            const address = receiverAddress || 'EndereÃ§o nÃ£o configurado';
-            const data = checkout.buildCheckoutData(address);
+            if (!selectedPlan.price || selectedPlan.price <= 0) return;
 
-            paymentData = {
-                receiver: data.receiver.name,
-                plan: data.plan?.id || '',
-                amount: data.amount,
-                currency: data.currency,
-                chain: data.chain,
-                address: data.address,
-                paymentLink: data.paymentLink,
-                nonce: data.nonce,
-            };
+            try {
+                checkout.selectChain(selectedChain);
+                const address = receiverAddress || 'Endereço não configurado';
+                const data = checkout.buildCheckoutData(address);
 
-            document.getElementById('qr-inline-placeholder').style.display = 'none';
-            document.getElementById('qr-inline-wrapper').style.display = 'inline-block';
-            document.getElementById('qr-inline-info').style.display = 'block';
+                paymentData = {
+                    receiver: data.receiver.name,
+                    plan: data.plan?.id || '',
+                    amount: data.amount,
+                    currency: data.currency,
+                    chain: data.chain,
+                    address: data.address,
+                    paymentLink: data.paymentLink,
+                    nonce: data.nonce,
+                };
 
-            document.getElementById('qr-amount-inline').textContent = `$${data.amount.toFixed(2)} ${data.currency}`;
-            document.getElementById('qr-chain-inline').textContent = getChainLabel(data.chain);
-            document.getElementById('qr-address-inline').textContent = address;
+                document.getElementById('qr-inline-placeholder').style.display = 'none';
+                document.getElementById('qr-inline-wrapper').style.display = 'inline-block';
+                document.getElementById('qr-inline-info').style.display = 'block';
 
-            const qr = document.getElementById('qr-code-inline');
-            qr.setAttribute('data', data.paymentLink);
+                document.getElementById('qr-amount-inline').textContent = `$${data.amount.toFixed(2)} ${data.currency}`;
+                document.getElementById('qr-chain-inline').textContent = getChainLabel(data.chain);
+                document.getElementById('qr-address-inline').textContent = address;
+
+                const qr = document.getElementById('qr-code-inline');
+                qr.setAttribute('data', data.paymentLink);
+            } catch (e) {
+                console.error('Erro ao gerar QR Code:', e);
+            }
         }
 
         function selectPlan(planId) {
@@ -1177,24 +1183,34 @@
                 return;
             }
 
-            checkout.selectChain(selectedChain);
-            const data = checkout.buildCheckoutData(receiverAddress || '');
+            if (!selectedPlan.price || selectedPlan.price <= 0) {
+                showToast('Valor do plano inválido', 'error');
+                return;
+            }
 
-            paymentData = {
-                receiver: data.receiver.name,
-                receiverEmail: data.receiver.email,
-                plan: data.plan?.id || '',
-                planName: data.plan?.name || '',
-                amount: data.amount,
-                currency: data.currency,
-                chain: data.chain,
-                address: data.address,
-                timestamp: data.timestamp,
-                nonce: data.nonce,
-                paymentLink: data.paymentLink,
-            };
+            try {
+                checkout.selectChain(selectedChain);
+                const data = checkout.buildCheckoutData(receiverAddress || '');
 
-            showQRModal();
+                paymentData = {
+                    receiver: data.receiver.name,
+                    receiverEmail: data.receiver.email,
+                    plan: data.plan?.id || '',
+                    planName: data.plan?.name || '',
+                    amount: data.amount,
+                    currency: data.currency,
+                    chain: data.chain,
+                    address: data.address,
+                    timestamp: data.timestamp,
+                    nonce: data.nonce,
+                    paymentLink: data.paymentLink,
+                };
+
+                showQRModal();
+            } catch (e) {
+                console.error('Erro ao processar pagamento:', e);
+                showToast('Erro ao processar pagamento. Verifique os dados e tente novamente.', 'error');
+            }
         }
 
         function showQRModal() {

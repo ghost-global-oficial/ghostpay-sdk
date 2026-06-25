@@ -114,13 +114,21 @@ export class Checkout {
 
   getAmount(): number {
     switch (this._config.mode) {
-      case 'fixed':
-        return this._config.fixedAmount || this._selectedPlan?.price || 0;
+      case 'fixed': {
+        const fixed = this._config.fixedAmount;
+        if (typeof fixed === 'number' && fixed > 0) return fixed;
+        const planPrice = this._selectedPlan?.price;
+        if (typeof planPrice === 'number' && planPrice > 0) return planPrice;
+        return 0;
+      }
       case 'plans':
-      case 'multi':
-        return this._selectedPlan?.price || 0;
+      case 'multi': {
+        const price = this._selectedPlan?.price;
+        if (typeof price === 'number' && price > 0) return price;
+        return 0;
+      }
       case 'custom':
-        return 0; // User must provide
+        return 0;
       default:
         return 0;
     }
