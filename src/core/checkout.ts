@@ -10,7 +10,9 @@ import type {
   PaymentMode,
   ReceiverInfo,
   ChainId,
+  TransactionMode,
 } from '../types/index.js';
+import { DEFAULT_HOSTED_PAYMENT_URL } from '../types/index.js';
 import { hmacSha256, bytesToHex } from './crypto.js';
 import { WebhookClient } from './webhook.js';
 
@@ -22,12 +24,17 @@ export class Checkout {
   private _config: CheckoutConfig;
   private _selectedPlan: PaymentPlan | null = null;
   private _selectedChain: ChainId;
+  private _transactionMode: TransactionMode;
+  private _hostedPaymentUrl: string;
 
   constructor(config: CheckoutConfig) {
     this._config = {
       supportedChains: ['bitcoin', 'ethereum', 'solana', 'polygon', 'bsc'],
       ...config,
     };
+
+    this._transactionMode = this._config.transactionMode || 'hosted';
+    this._hostedPaymentUrl = this._config.hostedPaymentUrl || DEFAULT_HOSTED_PAYMENT_URL;
 
     // Set default selected plan
     if (this._config.mode === 'plans' && this._config.plans?.length) {
@@ -63,6 +70,14 @@ export class Checkout {
 
   get selectedChain(): ChainId {
     return this._selectedChain;
+  }
+
+  get transactionMode(): TransactionMode {
+    return this._transactionMode;
+  }
+
+  get hostedPaymentUrl(): string {
+    return this._hostedPaymentUrl;
   }
 
   get supportedChains(): ReadonlyArray<ChainId> {
@@ -167,7 +182,22 @@ export class Checkout {
       params.set('sig', bytesToHex(mac));
     }
 
+    if (this._transactionMode === 'hosted') {
+      return `${this._hostedPaymentUrl}?${params.toString()}`;
+    }
+
     return `ghostpay:payment?${params.toString()}`;
+  }
+
+  /**
+   * Open the payment page in a new window/tab (hosted mode only)
+   */
+  openPaymentPage(address: string, customAmount?: number, signingKey?: string): string {
+    const link = this.generatePaymentLink(address, customAmount, signingKey);
+    if (this._transactionMode === 'hosted' && typeof window !== 'undefined') {
+      window.open(link, '_blank');
+    }
+    return link;
   }
 
   // ----------------------------------------
@@ -190,6 +220,7 @@ export class Checkout {
       nonce,
       timestamp: Date.now(),
       metadata: this._config.metadata ? { ...this._config.metadata } : undefined,
+      transactionMode: this._transactionMode,
     };
   }
 

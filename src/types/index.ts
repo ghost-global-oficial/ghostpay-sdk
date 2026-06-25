@@ -224,9 +224,15 @@ export interface PaymentPlan {
   selected?: boolean;
 }
 
+export type TransactionMode = 'local' | 'hosted';
+
+export const DEFAULT_HOSTED_PAYMENT_URL = 'https://ghostpay-landing-a9wz.vercel.app/payment';
+
 export interface CheckoutConfig {
   receiver: ReceiverInfo;
   mode: PaymentMode;
+  transactionMode?: TransactionMode;
+  hostedPaymentUrl?: string;
   plans?: PaymentPlan[];
   fixedAmount?: number;
   fixedCurrency?: string;
@@ -249,6 +255,7 @@ export interface CheckoutData {
   nonce: string;
   timestamp: number;
   metadata?: Record<string, string>;
+  transactionMode?: TransactionMode;
 }
 
 // ============================================

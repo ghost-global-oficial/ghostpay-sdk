@@ -30,7 +30,7 @@ describe('Checkout Integration', () => {
       });
 
       const link = checkout.generatePaymentLink('bc1qaddr', undefined, 'signing-key');
-      expect(link).toContain('ghostpay:payment');
+      expect(link).toContain('ghostpay-landing-a9wz.vercel.app/payment');
       expect(link).toContain('amount=25');
       expect(link).toContain('sig=');
     });

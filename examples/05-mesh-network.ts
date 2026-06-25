@@ -19,7 +19,7 @@ async function networkExample() {
   console.log('1. Creating mesh network...');
 
   const network = new MeshNetwork({
-    signalingUrl: 'wss://signal.ghostpay.io',
+    signalingUrl: 'wss://signal.ghostpay.dev',
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },

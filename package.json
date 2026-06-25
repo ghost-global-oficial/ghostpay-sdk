@@ -1,6 +1,6 @@
 {
   "name": "@ghostpay/sdk",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Ghost Pay SDK - Decentralized P2P Cryptocurrency Payment System with Mesh Network",
   "type": "module",
   "main": "./dist/cjs/index.cjs.js",

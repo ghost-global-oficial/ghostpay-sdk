@@ -43,14 +43,27 @@ describe('Checkout', () => {
       expect(checkout.receiver.name).toBe('Test Store');
     });
 
-    it('should generate payment link', () => {
+    it('should generate payment link (hosted mode by default)', () => {
       const checkout = createFixedCheckout(mockReceiver, 100, 'USD');
       const link = checkout.generatePaymentLink('bc1qtest123');
-      expect(link).toContain('ghostpay:payment?');
+      expect(link).toContain('https://ghostpay-landing-a9wz.vercel.app/payment?');
       expect(link).toContain('amount=100');
       expect(link).toContain('currency=USD');
       expect(link).toContain('address=bc1qtest123');
       expect(link).toContain('receiver=Test+Store');
+    });
+
+    it('should generate payment link in local mode', () => {
+      const checkout = new Checkout({
+        receiver: mockReceiver,
+        mode: 'fixed',
+        fixedAmount: 100,
+        fixedCurrency: 'USD',
+        transactionMode: 'local',
+      });
+      const link = checkout.generatePaymentLink('bc1qtest123');
+      expect(link).toContain('ghostpay:payment?');
+      expect(link).toContain('amount=100');
     });
 
     it('should validate fixed checkout', () => {
@@ -160,7 +173,7 @@ describe('Checkout', () => {
       expect(data.currency).toBe('USD');
       expect(data.chain).toBe('bitcoin');
       expect(data.address).toBe('bc1qaddr');
-      expect(data.paymentLink).toContain('ghostpay:payment');
+      expect(data.paymentLink).toContain('ghostpay-landing-a9wz.vercel.app/payment');
       expect(data.nonce).toHaveLength(32);
       expect(data.timestamp).toBeGreaterThan(0);
     });

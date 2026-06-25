@@ -151,7 +151,7 @@ network.startDiscovery();
 import { MeshNetwork } from '@ghostpay/sdk';
 
 const network = new MeshNetwork({
-  signalingUrl: 'wss://signal.ghostpay.io',
+  signalingUrl: 'wss://signal.ghostpay.dev',
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
   maxPeers: 50,
 });

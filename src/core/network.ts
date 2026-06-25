@@ -11,7 +11,7 @@ import type { PeerInfo, NetworkConfig, SignalMessage, SDKEvent, MeshPaymentInten
 // ============================================
 
 const DEFAULT_NETWORK_CONFIG: NetworkConfig = {
-  signalingUrl: 'wss://signal.ghostpay.io',
+  signalingUrl: 'wss://signal.ghostpay.dev',
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
