@@ -59,7 +59,7 @@ const link = checkout.generatePaymentLink(
   undefined,
   process.env.GHOSTPAY_SIGNING_KEY
 );
-// → https://ghostpay-landing-a9wz.vercel.app/payment?receiver=...&amount=25&sig=...
+// → https://ghostpay-landing.vercel.app/payment?receiver=...&amount=25&sig=...
 ```
 
 ---
@@ -181,7 +181,7 @@ import { Checkout, createFixedCheckout, createPlanCheckout, createCustomCheckout
 
 | Mode | Description |
 |------|-------------|
-| `hosted` (default) | Transactions are processed via the hosted Ghost Pay payment page at `https://ghostpay-landing-a9wz.vercel.app/payment` |
+| `hosted` (default) | Transactions are processed via the hosted Ghost Pay payment page at `https://ghostpay-landing.vercel.app/payment` |
 | `local` | Transactions use the `ghostpay:payment?` URI scheme for local processing |
 
 ```typescript
@@ -234,7 +234,7 @@ Generates a payment link with optional HMAC signature.
 ```typescript
 // Hosted mode (default)
 const link = checkout.generatePaymentLink('bc1q...', undefined, 'my-signing-key');
-// → https://ghostpay-landing-a9wz.vercel.app/payment?receiver=...&amount=25&sig=hmac-sha256...
+// → https://ghostpay-landing.vercel.app/payment?receiver=...&amount=25&sig=hmac-sha256...
 
 // Local mode
 const localCheckout = new Checkout({
