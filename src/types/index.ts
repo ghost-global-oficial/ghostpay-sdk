@@ -141,6 +141,18 @@ export interface GossipMessage {
   hash?: string;
 }
 
+export interface MeshPaymentIntent {
+  id: string;
+  receiver: string;
+  amount: number;
+  currency: string;
+  chain: ChainId;
+  address: string;
+  nonce: string;
+  nodeId?: string;
+  createdAt: number;
+}
+
 // ============================================
 // Storage Types
 // ============================================
@@ -251,6 +263,9 @@ export type SDKEventType =
   | 'peer:connected'
   | 'peer:disconnected'
   | 'peer:discovered'
+  | 'mesh:intent-created'
+  | 'mesh:intent-received'
+  | 'mesh:intent-synced'
   | 'transaction:sent'
   | 'transaction:received'
   | 'transaction:confirmed'

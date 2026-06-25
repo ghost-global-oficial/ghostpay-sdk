@@ -4,7 +4,7 @@
  */
 
 import { bytesToHex, randomBytes, hash256 } from './crypto.js';
-import type { PeerInfo, NetworkConfig, SignalMessage, SDKEvent } from '../types/index.js';
+import type { PeerInfo, NetworkConfig, SignalMessage, SDKEvent, MeshPaymentIntent } from '../types/index.js';
 
 // ============================================
 // Constants
@@ -505,6 +505,63 @@ class GossipProtocol extends EventEmitter {
   }
 }
 
+class MeshCoordinator extends EventEmitter {
+  private intents = new Map<string, MeshPaymentIntent>();
+
+  createIntent(intent: Omit<MeshPaymentIntent, 'id' | 'createdAt'>): MeshPaymentIntent {
+    const nextIntent: MeshPaymentIntent = {
+      ...intent,
+      id: bytesToHex(randomBytes(12)),
+      createdAt: Date.now(),
+    };
+    this.intents.set(nextIntent.id, nextIntent);
+    this.emit('mesh:intent-created', nextIntent);
+    return nextIntent;
+  }
+
+  receiveIntent(intent: MeshPaymentIntent): void {
+    this.intents.set(intent.id, intent);
+    this.emit('mesh:intent-received', intent);
+  }
+
+  markSynced(intentId: string): void {
+    const intent = this.intents.get(intentId);
+    if (!intent) return;
+    this.emit('mesh:intent-synced', intent);
+  }
+
+  listIntents(): MeshPaymentIntent[] {
+    return Array.from(this.intents.values()).sort((a, b) => b.createdAt - a.createdAt);
+  }
+}
+
+export class MeshIntentManager extends EventEmitter {
+  private coordinator = new MeshCoordinator();
+
+  constructor() {
+    super();
+    this.coordinator.on('mesh:intent-created', (event) => this.emit('mesh:intent-created', event.data));
+    this.coordinator.on('mesh:intent-received', (event) => this.emit('mesh:intent-received', event.data));
+    this.coordinator.on('mesh:intent-synced', (event) => this.emit('mesh:intent-synced', event.data));
+  }
+
+  create(intent: Omit<MeshPaymentIntent, 'id' | 'createdAt'>): MeshPaymentIntent {
+    return this.coordinator.createIntent(intent);
+  }
+
+  receive(intent: MeshPaymentIntent): void {
+    this.coordinator.receiveIntent(intent);
+  }
+
+  sync(intentId: string): void {
+    this.coordinator.markSynced(intentId);
+  }
+
+  list(): MeshPaymentIntent[] {
+    return this.coordinator.listIntents();
+  }
+}
+
 // ============================================
 // Mesh Network
 // ============================================
@@ -515,6 +572,7 @@ export class MeshNetwork extends EventEmitter {
   private signaling: SignalingClient;
   private connections = new Map<string, PeerConnection>();
   private gossip: GossipProtocol;
+  private meshCoordinator: MeshCoordinator;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private _isRunning = false;
 
@@ -524,9 +582,11 @@ export class MeshNetwork extends EventEmitter {
     this._peerId = bytesToHex(randomBytes(16));
     this.signaling = new SignalingClient(this._peerId, this.config);
     this.gossip = new GossipProtocol();
+    this.meshCoordinator = new MeshCoordinator();
 
     this.setupSignalingHandlers();
     this.setupGossipHandlers();
+    this.setupMeshHandlers();
   }
 
   get peerId(): string {
@@ -600,6 +660,20 @@ export class MeshNetwork extends EventEmitter {
     return this.gossip.gossipTransaction(tx, () => this.connectedPeers);
   }
 
+  createPaymentIntent(intent: Omit<MeshPaymentIntent, 'id' | 'createdAt'>): MeshPaymentIntent {
+    const nextIntent = this.meshCoordinator.createIntent({ ...intent, nodeId: intent.nodeId || this._peerId });
+    this.broadcastIntent(nextIntent);
+    return nextIntent;
+  }
+
+  receivePaymentIntent(intent: MeshPaymentIntent): void {
+    this.meshCoordinator.receiveIntent(intent);
+  }
+
+  getPaymentIntents(): MeshPaymentIntent[] {
+    return this.meshCoordinator.listIntents();
+  }
+
   sendTransaction(peerId: string, tx: unknown): boolean {
     const conn = this.connections.get(peerId);
     if (!conn || conn.state !== 'connected') {
@@ -640,6 +714,24 @@ export class MeshNetwork extends EventEmitter {
     this.gossip.on('transaction:received', (event) => {
       this.emit('transaction:received', event.data);
     });
+  }
+
+  private setupMeshHandlers(): void {
+    this.meshCoordinator.on('mesh:intent-created', (event) => {
+      this.emit('mesh:intent-created', event.data);
+    });
+    this.meshCoordinator.on('mesh:intent-received', (event) => {
+      this.emit('mesh:intent-received', event.data);
+    });
+    this.meshCoordinator.on('mesh:intent-synced', (event) => {
+      this.emit('mesh:intent-synced', event.data);
+    });
+  }
+
+  private broadcastIntent(intent: MeshPaymentIntent): void {
+    for (const peer of this.connectedPeers) {
+      peer.send({ type: 'tx', data: { meshType: 'payment-intent', intent } });
+    }
   }
 
   private setupPeerConnection(conn: PeerConnection): void {
@@ -702,6 +794,10 @@ export class MeshNetwork extends EventEmitter {
         }
         break;
       case 'tx':
+        if (message.data && typeof message.data === 'object' && (message.data as any).meshType === 'payment-intent') {
+          this.meshCoordinator.receiveIntent((message.data as any).intent as MeshPaymentIntent);
+          break;
+        }
         this.gossip.handleTransactionData(message.data, () => this.connectedPeers);
         break;
       case 'ping':

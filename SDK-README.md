@@ -18,7 +18,8 @@
   - [Checkout](#checkout)
   - [Webhook](#webhook)
   - [Privacy](#privacy)
-  - [Network](#network)
+- [Network](#network)
+  - [Mesh Intent Manager](#mesh-intent-manager)
   - [Transaction](#transaction)
   - [Storage](#storage)
   - [Proof of Work](#proof-of-work)
@@ -52,7 +53,11 @@ const checkout = Checkout.fromJSON({
 });
 
 // 3. Generate payment link
-const link = checkout.generatePaymentLink('bc1q...');
+const link = checkout.generatePaymentLink(
+  'bc1q...',
+  undefined,
+  process.env.GHOSTPAY_SIGNING_KEY
+);
 ```
 
 ---
@@ -451,6 +456,40 @@ const txHash = network.broadcastTransaction(tx);
 network.on('peer:connected', (event) => console.log('Peer:', event.data));
 network.on('transaction:received', (event) => console.log('TX:', event.data));
 ```
+
+### Mesh Intent Manager
+
+Use this API when you want to create, list, receive, and sync payment intents as first-class
+mesh events without reaching into the internal network classes.
+
+```typescript
+import { MeshIntentManager } from '@ghostpay/sdk';
+
+const mesh = new MeshIntentManager();
+
+mesh.on('mesh:intent-created', (event) => {
+  console.log('Intent created:', event.data);
+});
+
+const intent = mesh.create({
+  receiver: 'My Store',
+  amount: 49.99,
+  currency: 'USD',
+  chain: 'bitcoin',
+  address: 'bc1q...',
+  nonce: 'abc123',
+  nodeId: 'local-node-1',
+});
+
+const allIntents = mesh.list();
+mesh.sync(intent.id);
+```
+
+Events:
+
+- `mesh:intent-created`
+- `mesh:intent-received`
+- `mesh:intent-synced`
 
 ---
 

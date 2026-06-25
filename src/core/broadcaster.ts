@@ -51,7 +51,7 @@ export interface BalanceInfo {
 export interface BroadcastConfig {
   rpcUrls?: string[];
   rpcUrl?: string;
-  apiKey?: string;
+  publicKey?: string;
   timeout?: number;
 }
 
@@ -68,7 +68,7 @@ export class BlockchainBroadcaster {
       const chainConfig = getChainConfig(chain);
       this.configs.set(chain, {
         rpcUrls: customConfigs?.[chain]?.rpcUrls || [chainConfig.rpcUrl!],
-        apiKey: customConfigs?.[chain]?.apiKey,
+        publicKey: customConfigs?.[chain]?.publicKey,
         timeout: customConfigs?.[chain]?.timeout || 30000,
       });
     }
@@ -373,8 +373,8 @@ export class BlockchainBroadcaster {
         ...(options?.headers as Record<string, string>),
       };
 
-      if (config.apiKey) {
-        headers['Authorization'] = `Bearer ${config.apiKey}`;
+      if (config.publicKey) {
+        headers['X-Public-Key'] = config.publicKey;
       }
 
       const response = await fetch(url, {

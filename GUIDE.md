@@ -12,6 +12,7 @@ Guia completo para integrar pagamentos cripto na tua aplicação.
 - [Receber Pagamentos](#receber-pagamentos)
 - [Verificar Pagamentos](#verificar-pagamentos)
 - [Webhooks](#webhooks)
+- [Mesh Intents](#mesh-intents)
 - [Integração Android](#integração-android)
 - [Exemplos Reais](#exemplos-reais)
 - [Solução de Problemas](#solução-de-problemas)
@@ -319,6 +320,37 @@ app.post('/api/ghostpay-webhook', (req, res) => {
   res.json({ received: true });
 });
 ```
+
+---
+
+## Mesh Intents
+
+Quando o checkout precisa funcionar com coordenação descentralizada, a API de mesh pode guardar
+intenções de pagamento como eventos locais e replicáveis.
+
+```typescript
+import { MeshIntentManager } from '@ghostpay/sdk';
+
+const mesh = new MeshIntentManager();
+
+const intent = mesh.create({
+  receiver: 'Minha Loja',
+  amount: 49.99,
+  currency: 'USD',
+  chain: 'bitcoin',
+  address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+  nonce: 'n-123',
+  nodeId: 'ghost-wallet-local',
+});
+
+console.log(mesh.list());
+mesh.sync(intent.id);
+```
+
+Use esta API quando:
+- o dispositivo da Ghost Wallet atua como nó local
+- não existe backend central teu
+- a mesh precisa registrar o estado do pagamento antes da liquidação on-chain
 
 ---
 

@@ -34,7 +34,7 @@ async function storageExample() {
   // 2. Store and retrieve encrypted data
   // ============================================
   console.log('2. Storing encrypted data...');
-  const secretData = { apiKey: 'sk-1234567890', secret: 'my-secret-value' };
+  const secretData = { publicKey: '0x1234567890abcdef', secret: 'my-secret-value' };
   await storage.set('api-config', secretData);
   console.log(`   Stored: ${JSON.stringify(secretData)}\n`);
 

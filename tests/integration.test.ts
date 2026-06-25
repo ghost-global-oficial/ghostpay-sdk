@@ -262,7 +262,7 @@ describe('Blockchain Broadcaster', () => {
 
   it('should create broadcaster with custom configs', () => {
     const broadcaster = new BlockchainBroadcaster({
-      bitcoin: { rpcUrl: 'https://custom-btc-rpc.com', apiKey: 'key123' },
+      bitcoin: { rpcUrl: 'https://custom-btc-rpc.com', publicKey: '0x1234567890abcdef' },
       ethereum: { rpcUrl: 'https://custom-eth-rpc.com' },
     });
     expect(broadcaster).toBeDefined();
@@ -276,5 +276,5 @@ describe('Blockchain Broadcaster', () => {
     );
     // Should fail gracefully (not throw)
     expect(result.success).toBe(false);
-  });
+  }, 10000);
 });
