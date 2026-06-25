@@ -165,7 +165,7 @@ await navigator.clipboard.writeText(link);
 A forma mais fácil é redirecionar para a página hosted no Vercel:
 
 ```typescript
-const paymentUrl = `https://ghostpay-landing.vercel.app/payment?receiver=Minha+Loja&amount=49.99&currency=USD&chain=bitcoin&address=bc1q...&sig=...`;
+const paymentUrl = `https://ghostpay-systems.vercel.app/payment?receiver=Minha+Loja&amount=49.99&currency=USD&chain=bitcoin&address=bc1q...&sig=...`;
 window.location.href = paymentUrl;
 ```
 
@@ -369,7 +369,7 @@ import { Linking } from 'react-native';
 const handleQRCode = (data: string) => {
   if (data.startsWith('ghostpay:payment?')) {
     const queryString = data.replace('ghostpay:payment?', '');
-    const paymentUrl = `https://ghostpay-landing.vercel.app/payment?${queryString}`;
+    const paymentUrl = `https://ghostpay-systems.vercel.app/payment?${queryString}`;
     Linking.openURL(paymentUrl);
   }
 };
@@ -428,7 +428,7 @@ const paymentLink = checkout.generatePaymentLink(
 );
 
 // 3. Redirecionar para página hosted
-window.location.href = `https://ghostpay-landing.vercel.app/payment?${new URL(paymentLink.replace('ghostpay:payment?', '')).searchParams.toString()}`;
+window.location.href = `https://ghostpay-systems.vercel.app/payment?${new URL(paymentLink.replace('ghostpay:payment?', '')).searchParams.toString()}`;
 ```
 
 ### Exemplo 2: App de Doações
@@ -540,8 +540,8 @@ app.use((req, res, next) => {
 
 | Recurso | URL |
 |---------|-----|
-| Checkout hosted | `https://ghostpay-landing.vercel.app/payment` |
-| Scanner hosted | `https://ghostpay-landing.vercel.app/scan` |
+| Checkout hosted | `https://ghostpay-systems.vercel.app/payment` |
+| Scanner hosted | `https://ghostpay-systems.vercel.app/scan` |
 | SDK UMD | `https://unpkg.com/@ghostpay/sdk/dist/umd/ghostpay-sdk.js` |
 | GitHub | `https://github.com/ghostpay/sdk` |
 | NPM | `https://www.npmjs.com/package/@ghostpay/sdk` |

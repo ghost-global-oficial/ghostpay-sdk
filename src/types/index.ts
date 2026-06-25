@@ -226,7 +226,7 @@ export interface PaymentPlan {
 
 export type TransactionMode = 'local' | 'hosted';
 
-export const DEFAULT_HOSTED_PAYMENT_URL = 'https://ghostpay-landing.vercel.app/payment';
+export const DEFAULT_HOSTED_PAYMENT_URL = 'https://ghostpay-systems.vercel.app/payment';
 
 export interface CheckoutConfig {
   receiver: ReceiverInfo;
