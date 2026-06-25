@@ -37,7 +37,7 @@ export class Checkout {
     this._hostedPaymentUrl = this._config.hostedPaymentUrl || DEFAULT_HOSTED_PAYMENT_URL;
 
     // Set default selected plan
-    if ((this._config.mode === 'plans' || this._config.mode === 'multi') && this._config.plans?.length) {
+    if (this._config.plans?.length) {
       this._selectedPlan = this._config.plans.find(p => p.selected) || this._config.plans[0];
     }
 
@@ -115,7 +115,7 @@ export class Checkout {
   getAmount(): number {
     switch (this._config.mode) {
       case 'fixed':
-        return this._config.fixedAmount || 0;
+        return this._config.fixedAmount || this._selectedPlan?.price || 0;
       case 'plans':
       case 'multi':
         return this._selectedPlan?.price || 0;
