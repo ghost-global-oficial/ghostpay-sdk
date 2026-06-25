@@ -4,7 +4,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-black.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-87%20passing-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-104%20passing-brightgreen.svg)](#testing)
 
 ---
 
@@ -42,12 +42,13 @@ const wallet = new Wallet();
 wallet.generateMnemonic();
 console.log('BTC Address:', wallet.getAddress('bitcoin'));
 
-// 2. Setup checkout
+// 2. Setup checkout (hosted mode - transactions via Ghost Pay hosted page)
 const checkout = Checkout.fromJSON({
   receiver: { name: 'My Store', email: 'pay@mystore.com' },
   mode: 'fixed',
   fixedAmount: 25.00,
   fixedCurrency: 'USD',
+  transactionMode: 'hosted', // Default - uses hosted payment page
   webhookUrl: 'https://mystore.com/api/ghostpay',
   webhookSecret: 'my-secret-key',
 });
@@ -58,6 +59,7 @@ const link = checkout.generatePaymentLink(
   undefined,
   process.env.GHOSTPAY_SIGNING_KEY
 );
+// → https://ghostpay-landing-a9wz.vercel.app/payment?receiver=...&amount=25&sig=...
 ```
 
 ---
@@ -169,10 +171,28 @@ const signature = await wallet.sign(messageHash, 'bitcoin');
 
 ### Checkout
 
-Configurable payment pages: fixed amount, plans, or custom amount.
+Configurable payment pages: fixed amount, plans, or custom amount. Supports **hosted** mode (via Ghost Pay payment page) or **local** mode (custom URI scheme).
 
 ```typescript
 import { Checkout, createFixedCheckout, createPlanCheckout, createCustomCheckout } from '@ghostpay/sdk';
+```
+
+#### Transaction Modes
+
+| Mode | Description |
+|------|-------------|
+| `hosted` (default) | Transactions are processed via the hosted Ghost Pay payment page at `https://ghostpay-landing-a9wz.vercel.app/payment` |
+| `local` | Transactions use the `ghostpay:payment?` URI scheme for local processing |
+
+```typescript
+const checkout = Checkout.fromJSON({
+  receiver: { name: 'My Store' },
+  mode: 'fixed',
+  fixedAmount: 25.00,
+  fixedCurrency: 'USD',
+  transactionMode: 'hosted', // or 'local'
+  hostedPaymentUrl: 'https://custom-domain.com/payment', // optional override
+});
 ```
 
 #### Fixed Amount
@@ -212,8 +232,27 @@ const link = checkout.generatePaymentLink('bc1q...', 50.00);
 Generates a payment link with optional HMAC signature.
 
 ```typescript
+// Hosted mode (default)
 const link = checkout.generatePaymentLink('bc1q...', undefined, 'my-signing-key');
-// ghostpay:payment?receiver=...&amount=25&sig=hmac-sha256...
+// → https://ghostpay-landing-a9wz.vercel.app/payment?receiver=...&amount=25&sig=hmac-sha256...
+
+// Local mode
+const localCheckout = new Checkout({
+  receiver: { name: 'My Store' },
+  mode: 'fixed',
+  fixedAmount: 25.00,
+  transactionMode: 'local',
+});
+const localLink = localCheckout.generatePaymentLink('bc1q...');
+// → ghostpay:payment?receiver=...&amount=25
+```
+
+#### `checkout.openPaymentPage(address, amount?, signingKey?): string`
+
+Opens the payment page in a new browser tab (hosted mode only).
+
+```typescript
+checkout.openPaymentPage('bc1q...'); // Opens new tab with hosted payment page
 ```
 
 #### `checkout.notifyWebhook(event, data): Promise<{ success, statusCode }>`
