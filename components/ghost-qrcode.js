@@ -2,14 +2,14 @@ const template = document.createElement('template');
 template.innerHTML = `
   <style>
     :host {
-      --ghost-qr-bg: #000;
-      --ghost-qr-modules: #fff;
+      --ghost-qr-bg: transparent;
+      --ghost-qr-modules: #000;
       display: block;
     }
 
     .qr-container {
       background: var(--ghost-qr-bg);
-      padding: 16px;
+      padding: 8px;
       display: inline-block;
     }
 
