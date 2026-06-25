@@ -167,6 +167,10 @@ export class Checkout {
       params.set('description', this._config.description);
     }
 
+    if (this._config.plans?.length) {
+      params.set('plans', JSON.stringify(this._config.plans));
+    }
+
     if (this._config.metadata) {
       for (const [key, value] of Object.entries(this._config.metadata)) {
         params.set(`meta_${key}`, value);
