@@ -156,7 +156,7 @@ export class WebhookClient {
       }
     }
 
-    console.error(`Webhook failed after ${this.config.retryAttempts!} retries:`, lastError?.message);
+    // Webhook failed after retries — silently return failure
     return { success: false };
   }
 }

@@ -176,6 +176,9 @@ export async function pbkdf2DeriveKey(
   salt: Uint8Array | null = null,
   iterations: number = PBKDF2_DEFAULT_ITERATIONS
 ): Promise<{ key: CryptoKey; salt: string }> {
+  if (iterations < PBKDF2_DEFAULT_ITERATIONS) {
+    throw new Error(`PBKDF2 iterations must be at least ${PBKDF2_DEFAULT_ITERATIONS}`);
+  }
   const actualSalt = salt || randomBytes(SALT_LENGTH);
 
   const keyMaterial = await crypto.subtle.importKey(

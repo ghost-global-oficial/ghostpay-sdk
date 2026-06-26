@@ -49,8 +49,8 @@ class EventEmitter {
     for (const callback of this.listeners.get(type) || []) {
       try {
         callback(event);
-      } catch (e) {
-        console.error(`Event listener error for ${type}:`, e);
+      } catch {
+        // Silently drop — never log error objects in production
       }
     }
   }
@@ -104,8 +104,7 @@ class SignalingClient extends EventEmitter {
           this.attemptReconnect();
         };
 
-        this.ws.onerror = (error) => {
-          console.error('Signaling WebSocket error:', error);
+        this.ws.onerror = () => {
           reject(new Error('Failed to connect to signaling server'));
         };
       } catch (e) {
@@ -167,6 +166,40 @@ class SignalingClient extends EventEmitter {
   private handleMessage(data: string): void {
     try {
       const message: SignalMessage = JSON.parse(data);
+
+      // Validate message schema
+      if (
+        !message ||
+        typeof message !== 'object' ||
+        typeof message.type !== 'string' ||
+        typeof message.from !== 'string' ||
+        typeof message.to !== 'string' ||
+        typeof message.timestamp !== 'number'
+      ) {
+        return; // Reject malformed messages silently
+      }
+
+      // Validate message type
+      const validTypes = ['offer', 'answer', 'ice-candidate', 'register', 'peers', 'heartbeat'];
+      if (!validTypes.includes(message.type)) {
+        return; // Reject unknown message types
+      }
+
+      // Validate payload for signaling types
+      if (message.type === 'offer' || message.type === 'answer') {
+        const p = message.payload as any;
+        if (!p || typeof p.sdp !== 'string') {
+          return; // Reject invalid SDP payloads
+        }
+      }
+
+      if (message.type === 'ice-candidate') {
+        const p = message.payload as any;
+        if (!p || typeof p.candidate !== 'string') {
+          return; // Reject invalid ICE payloads
+        }
+      }
+
       if (message.from === this.peerId) return;
 
       switch (message.type) {
@@ -179,15 +212,14 @@ class SignalingClient extends EventEmitter {
           this.emit('peers', message.payload);
           break;
       }
-    } catch (e) {
-      console.error('Failed to parse signaling message:', e);
+    } catch {
+      // Silently reject unparseable messages
     }
   }
 
   private attemptReconnect(): void {
     if (this.reconnectAttempts >= this.config.reconnectAttempts) {
-      console.error('Max reconnection attempts reached');
-      return;
+      return; // Silently give up
     }
 
     this.reconnectAttempts++;
@@ -352,32 +384,56 @@ class PeerConnection extends EventEmitter {
     channel.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        this.emit('data', data);
+
+        // Validate gossip message schema
+        if (data && typeof data === 'object' && typeof data.type === 'string') {
+          const validGossipTypes = ['inv', 'getdata', 'tx', 'block', 'ping', 'pong'];
+          if (validGossipTypes.includes(data.type)) {
+            // Validate required fields per type
+            if ((data.type === 'inv' || data.type === 'getdata') && !Array.isArray(data.hashes)) {
+              return; // Reject: missing hashes array
+            }
+            this.emit('data', data);
+          }
+        }
+        // Silently drop malformed messages
       } catch {
-        this.emit('data', event.data);
+        // Never fall back to raw string data
       }
     };
 
-    channel.onerror = (error) => {
-      console.error(`Data channel error with ${this._peerId}:`, error);
+    channel.onerror = () => {
+      // Silently handle — do not log error objects
     };
   }
 
   private async handleSignal(message: SignalMessage): Promise<void> {
     try {
       switch (message.type) {
-        case 'offer':
-          await this.handleOffer((message.payload as any).sdp);
+        case 'offer': {
+          const sdp = (message.payload as any)?.sdp;
+          if (typeof sdp === 'string' && sdp.length > 0) {
+            await this.handleOffer(sdp);
+          }
           break;
-        case 'answer':
-          await this.handleAnswer((message.payload as any).sdp);
+        }
+        case 'answer': {
+          const sdp = (message.payload as any)?.sdp;
+          if (typeof sdp === 'string' && sdp.length > 0) {
+            await this.handleAnswer(sdp);
+          }
           break;
-        case 'ice-candidate':
-          await this.handleIceCandidate(message.payload as RTCIceCandidateInit);
+        }
+        case 'ice-candidate': {
+          const candidate = message.payload as RTCIceCandidateInit;
+          if (candidate && typeof candidate.candidate === 'string') {
+            await this.handleIceCandidate(candidate);
+          }
           break;
+        }
       }
-    } catch (e) {
-      console.error(`Error handling signal from ${this._peerId}:`, e);
+    } catch {
+      // Silently handle — do not log error objects
     }
   }
 
@@ -401,7 +457,7 @@ interface GossipMessage {
 }
 
 class GossipProtocol extends EventEmitter {
-  private seenTransactions = new Set<string>();
+  private seenTransactions = new Map<string, number>(); // hash -> timestamp for LRU
   private pendingTransactions = new Map<string, { tx: unknown; timestamp: number; relays: Set<string> }>();
   private inventory = new Map<string, string>();
   private static readonly MAX_SEEN_SIZE = 10_000;
@@ -417,16 +473,20 @@ class GossipProtocol extends EventEmitter {
       return txHash;
     }
 
-    // Prune seenTransactions if too large
+    // LRU pruning: remove oldest half when at capacity
     if (this.seenTransactions.size >= GossipProtocol.MAX_SEEN_SIZE) {
-      const entries = Array.from(this.seenTransactions);
-      const toRemove = entries.slice(0, Math.floor(entries.length / 2));
-      for (const h of toRemove) {
-        this.seenTransactions.delete(h);
+      const entries = Array.from(this.seenTransactions.entries())
+        .sort((a, b) => a[1] - b[1]); // Sort by timestamp ascending
+      const removeCount = Math.floor(entries.length / 2);
+      for (let i = 0; i < removeCount; i++) {
+        const hash = entries[i]![0];
+        this.seenTransactions.delete(hash);
+        this.pendingTransactions.delete(hash);
+        this.inventory.delete(hash);
       }
     }
 
-    this.seenTransactions.add(txHash);
+    this.seenTransactions.set(txHash, Date.now());
     this.pendingTransactions.set(txHash, {
       tx,
       timestamp: Date.now(),
@@ -473,7 +533,7 @@ class GossipProtocol extends EventEmitter {
     const txHash = this.getTransactionHash(tx);
 
     if (!this.seenTransactions.has(txHash)) {
-      this.seenTransactions.add(txHash);
+      this.seenTransactions.set(txHash, Date.now());
       this.emit('transaction:received', { hash: txHash, tx });
 
       const peers = getConnectedPeers();
@@ -755,8 +815,7 @@ export class MeshNetwork extends EventEmitter {
 
     if (!this.connections.has(from)) {
       if (this.connections.size >= this.config.maxPeers) {
-        console.warn(`Rejecting peer ${from}: max limit reached`);
-        return;
+        return; // Reject silently — max limit reached
       }
 
       const conn = new PeerConnection(from, this.config, this.signaling);

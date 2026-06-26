@@ -198,11 +198,14 @@ export class Wallet {
 
   /**
    * Export wallet as JSON
+   * @deprecated Use exportEncrypted() instead. This method exposes the raw mnemonic.
    */
   export(): WalletExport {
     if (!this._mnemonic) {
       throw new Error('No mnemonic available. Wallet must be generated or imported.');
     }
+
+    console.warn('[GhostPay] WARNING: export() exposes raw mnemonic. Use exportEncrypted() instead.');
 
     return {
       version: 1,
