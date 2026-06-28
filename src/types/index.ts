@@ -204,7 +204,23 @@ export interface PoWResult {
 // Checkout / Payment Config Types
 // ============================================
 
-export type PaymentMode = 'fixed' | 'custom' | 'plans' | 'multi';
+export type PaymentMode = 'fixed' | 'custom' | 'plans' | 'multi' | 'catalog';
+
+export interface CatalogProduct {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  currency?: string;
+  image?: string;
+  category?: string;
+  inStock?: boolean;
+}
+
+export interface CatalogItem {
+  product: CatalogProduct;
+  quantity: number;
+}
 
 export interface ReceiverInfo {
   name: string;
@@ -234,6 +250,7 @@ export interface CheckoutConfig {
   transactionMode?: TransactionMode;
   hostedPaymentUrl?: string;
   plans?: PaymentPlan[];
+  catalogProducts?: CatalogProduct[];
   fixedAmount?: number;
   fixedCurrency?: string;
   fixedChain?: ChainId;
@@ -247,6 +264,7 @@ export interface CheckoutConfig {
 export interface CheckoutData {
   receiver: ReceiverInfo;
   plan: PaymentPlan | null;
+  catalogItems: CatalogItem[];
   amount: number;
   currency: string;
   chain: ChainId;

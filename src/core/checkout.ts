@@ -11,6 +11,8 @@ import type {
   ReceiverInfo,
   ChainId,
   TransactionMode,
+  CatalogProduct,
+  CatalogItem,
 } from '../types/index.js';
 import { DEFAULT_HOSTED_PAYMENT_URL } from '../types/index.js';
 import { hmacSha256, bytesToHex } from './crypto.js';
@@ -26,6 +28,8 @@ export class Checkout {
   private _selectedChain: ChainId;
   private _transactionMode: TransactionMode;
   private _hostedPaymentUrl: string;
+  private _catalogProducts: CatalogProduct[];
+  private _selectedItems: CatalogItem[] = [];
 
   constructor(config: CheckoutConfig) {
     this._config = {
@@ -41,6 +45,7 @@ export class Checkout {
       this._selectedPlan = this._config.plans.find(p => p.selected) || this._config.plans[0];
     }
 
+    this._catalogProducts = this._config.catalogProducts || [];
     this._selectedChain = this._config.fixedChain || 'bitcoin';
   }
 
@@ -82,6 +87,56 @@ export class Checkout {
 
   get supportedChains(): ReadonlyArray<ChainId> {
     return this._config.supportedChains || [];
+  }
+
+  // ----------------------------------------
+  // Catalog
+  // ----------------------------------------
+
+  get catalogProducts(): ReadonlyArray<CatalogProduct> {
+    return this._catalogProducts;
+  }
+
+  get selectedItems(): ReadonlyArray<CatalogItem> {
+    return this._selectedItems;
+  }
+
+  get catalogTotal(): number {
+    return this._selectedItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  }
+
+  addCatalogItem(productId: string, quantity = 1): CatalogItem {
+    const product = this._catalogProducts.find(p => p.id === productId);
+    if (!product) throw new Error(`Product not found: ${productId}`);
+    if (product.inStock === false) throw new Error(`Product out of stock: ${product.name}`);
+
+    const existing = this._selectedItems.find(i => i.product.id === productId);
+    if (existing) {
+      existing.quantity += quantity;
+      return existing;
+    }
+
+    const item: CatalogItem = { product, quantity };
+    this._selectedItems.push(item);
+    return item;
+  }
+
+  removeCatalogItem(productId: string): void {
+    this._selectedItems = this._selectedItems.filter(i => i.product.id !== productId);
+  }
+
+  setCatalogItemQuantity(productId: string, quantity: number): void {
+    if (quantity <= 0) {
+      this.removeCatalogItem(productId);
+      return;
+    }
+    const item = this._selectedItems.find(i => i.product.id === productId);
+    if (!item) throw new Error(`Product not found in cart: ${productId}`);
+    item.quantity = quantity;
+  }
+
+  clearCatalog(): void {
+    this._selectedItems = [];
   }
 
   // ----------------------------------------
@@ -127,6 +182,8 @@ export class Checkout {
         if (typeof price === 'number' && price > 0) return price;
         return 0;
       }
+      case 'catalog':
+        return this.catalogTotal;
       case 'custom':
         return 0;
       default:
@@ -141,6 +198,8 @@ export class Checkout {
       case 'plans':
       case 'multi':
         return this._selectedPlan?.currency || 'USD';
+      case 'catalog':
+        return this._selectedItems[0]?.product.currency || this._config.fixedCurrency || 'USD';
       case 'custom':
         return this._config.fixedCurrency || 'USD';
       default:
@@ -226,6 +285,7 @@ export class Checkout {
     return {
       receiver: { ...this._config.receiver },
       plan: this._selectedPlan ? { ...this._selectedPlan } : null,
+      catalogItems: this._selectedItems.map(i => ({ ...i, product: { ...i.product } })),
       amount,
       currency,
       chain: this._selectedChain,
@@ -298,6 +358,18 @@ export class Checkout {
           if (!plan.id) errors.push(`Plan missing id: ${JSON.stringify(plan)}`);
           if (!plan.name) errors.push(`Plan "${plan.id}" missing name`);
           if (plan.price < 0) errors.push(`Plan "${plan.id}" has negative price`);
+        }
+      }
+    }
+
+    if (this._config.mode === 'catalog') {
+      if (!this._config.catalogProducts?.length) {
+        errors.push('At least one product is required for catalog mode');
+      } else {
+        for (const product of this._config.catalogProducts) {
+          if (!product.id) errors.push(`Product missing id: ${JSON.stringify(product)}`);
+          if (!product.name) errors.push(`Product "${product.id}" missing name`);
+          if (product.price < 0) errors.push(`Product "${product.id}" has negative price`);
         }
       }
     }
@@ -382,6 +454,22 @@ export function createCustomCheckout(
     receiver,
     mode: 'custom',
     fixedCurrency: currency,
+    supportedChains,
+  });
+}
+
+/**
+ * Create a checkout with a product catalog (for small stores)
+ */
+export function createCatalogCheckout(
+  receiver: ReceiverInfo,
+  products: CatalogProduct[],
+  supportedChains: ChainId[] = ['bitcoin', 'ethereum']
+): Checkout {
+  return new Checkout({
+    receiver,
+    mode: 'catalog',
+    catalogProducts: products,
     supportedChains,
   });
 }
