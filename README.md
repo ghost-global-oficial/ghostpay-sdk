@@ -16,6 +16,7 @@
 - [API Reference](#api-reference)
   - [Wallet](#wallet)
   - [Checkout](#checkout)
+    - [Catalog Mode](#catalog-mode)
   - [Webhook](#webhook)
   - [Privacy](#privacy)
 - [Network](#network)
@@ -89,7 +90,7 @@ npm install @ghostpay/sdk
 │   ├── crypto.ts       # SHA-256, RIPEMD-160, secp256k1, AES-256-GCM
 │   ├── chains.ts       # Multi-chain configs (BTC, ETH, SOL, Polygon, BSC)
 │   ├── wallet.ts       # BIP39/BIP32 HD wallet
-│   ├── checkout.ts     # Payment pages: fixed, plans, custom
+│   ├── checkout.ts     # Payment pages: fixed, plans, custom, catalog
 │   ├── webhook.ts      # Webhook notifications + verification
 │   ├── privacy.ts      # Stealth addresses, Pedersen, Ring, CoinJoin, ZK
 │   ├── network.ts      # WebSocket signaling + WebRTC mesh
@@ -171,10 +172,10 @@ const signature = await wallet.sign(messageHash, 'bitcoin');
 
 ### Checkout
 
-Configurable payment pages: fixed amount, plans, or custom amount. Supports **hosted** mode (via Ghost Pay payment page) or **local** mode (custom URI scheme).
+Configurable payment pages: fixed amount, plans, custom amount, or product catalog. Supports **hosted** mode (via Ghost Pay payment page) or **local** mode (custom URI scheme).
 
 ```typescript
-import { Checkout, createFixedCheckout, createPlanCheckout, createCustomCheckout } from '@ghostpay/sdk';
+import { Checkout, createFixedCheckout, createPlanCheckout, createCustomCheckout, createCatalogCheckout } from '@ghostpay/sdk';
 ```
 
 #### Transaction Modes
@@ -225,6 +226,87 @@ const checkout = Checkout.fromJSON({
 ```typescript
 const checkout = createCustomCheckout({ name: 'My Store' }, 'USD');
 const link = checkout.generatePaymentLink('bc1q...', 50.00);
+```
+
+#### Catalog Mode
+
+Product catalog for small stores. Users select products and quantities via a modal.
+
+```typescript
+import { createCatalogCheckout } from '@ghostpay/sdk';
+
+const checkout = createCatalogCheckout(
+  { name: 'My Store' },
+  [
+    { id: '1', name: 'T-Shirt', price: 25.00, image: 'https://...', description: 'Cotton, sizes S-XL' },
+    { id: '2', name: 'Cap', price: 15.00, image: 'https://...', description: 'Adjustable' },
+    { id: '3', name: 'Sticker Pack', price: 5.00, inStock: false },
+  ]
+);
+
+// Add items to cart
+checkout.addCatalogItem('1', 2);  // 2x T-Shirt = $50
+checkout.addCatalogItem('2', 1);  // 1x Cap = $15
+
+// Check total
+console.log(checkout.catalogTotal);  // 65
+console.log(checkout.selectedItems); // [{ product: ..., quantity: 2 }, ...]
+
+// Update quantity
+checkout.setCatalogItemQuantity('1', 3);  // 3x T-Shirt = $75
+
+// Remove item
+checkout.removeCatalogItem('2');
+
+// Clear cart
+checkout.clearCatalog();
+
+// Generate payment link
+const link = checkout.generatePaymentLink('bc1q...');
+```
+
+##### Catalog Types
+
+```typescript
+interface CatalogProduct {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  currency?: string;    // Default: 'USD'
+  image?: string;       // URL to product image
+  category?: string;
+  inStock?: boolean;    // Default: true
+}
+
+interface CatalogItem {
+  product: CatalogProduct;
+  quantity: number;
+}
+```
+
+##### CheckoutConfig (Catalog)
+
+```typescript
+const checkout = Checkout.fromJSON({
+  receiver: { name: 'My Store' },
+  mode: 'catalog',
+  catalogProducts: [
+    { id: '1', name: 'T-Shirt', price: 25.00, image: 'https://...' },
+    { id: '2', name: 'Cap', price: 15.00 },
+  ],
+  supportedChains: ['bitcoin', 'ethereum'],
+});
+```
+
+##### CheckoutData (Catalog)
+
+```typescript
+const data = checkout.buildCheckoutData('bc1q...');
+// data.catalogItems = [
+//   { product: { id: '1', name: 'T-Shirt', price: 25.00 }, quantity: 2 },
+// ]
+// data.amount = 50.00
 ```
 
 #### `checkout.generatePaymentLink(address, amount?, signingKey?): string`
@@ -678,7 +760,7 @@ const address = generateAddress('bitcoin', publicKey);
 ## Testing
 
 ```bash
-npm test              # Run all 87 tests
+npm test              # Run all 104 tests
 npm run test:watch    # Watch mode
 npm run test:coverage # Coverage report
 ```
@@ -692,7 +774,8 @@ tests/
 ├── transaction.test.ts # 11 tests - Builder, serializer, multi-input/output
 ├── pow.test.ts         # 12 tests - Hashcash, spam prevention, difficulty
 ├── storage.test.ts     # 17 tests - SecureStorage, sessions, wallets
-└── checkout.test.ts    # 15 tests - Checkout modes, payment links
+├── checkout.test.ts    # 16 tests - Checkout modes, payment links, catalog
+└── integration.test.ts # 16 tests - Full integration tests
 ```
 
 ---
@@ -737,8 +820,13 @@ dist/
 | Unsigned payment links | HMAC-SHA256 signature |
 | `Math.random()` in nonce generation | `crypto.getRandomValues()` |
 | `base58Decode` leading zeros bug | Fixed zero restoration |
-| `seenTransactions` memory leak | Pruning with 10k limit |
+| `seenTransactions` memory leak | LRU pruning with timestamps |
 | Session overwrite | Multiple concurrent sessions |
+| PBKDF2 minimum iterations not enforced | Validation in `pbkdf2DeriveKey()` |
+| Signaling messages not validated | Schema + payload validation |
+| P2P data channel no validation | Gossip message schema validation |
+| console.error leaks internal state | Sanitized error logging |
+| Wallet export exposes raw mnemonic | Deprecation warning added |
 
 ### Best Practices
 

@@ -9,6 +9,7 @@ Guia completo para integrar pagamentos cripto na tua aplicação.
 - [Instalação](#instalação)
 - [Configuração Inicial](#configuração-inicial)
 - [Criar Checkout](#criar-checkout)
+  - [Catálogo (Lojas Pequenas)](#catálogo-lojas-pequenas)
 - [Receber Pagamentos](#receber-pagamentos)
 - [Verificar Pagamentos](#verificar-pagamentos)
 - [Webhooks](#webhooks)
@@ -124,6 +125,70 @@ const checkout = Checkout.fromJSON({
   supportedChains: ['bitcoin', 'ethereum'],
 });
 ```
+
+### Catálogo (Lojas Pequenas)
+
+Permite definir uma lista de produtos com imagens, preços e descrições. O utilizador seleciona produtos e quantidades através de um modal.
+
+```typescript
+import { createCatalogCheckout } from '@ghostpay/sdk';
+
+const checkout = createCatalogCheckout(
+  { name: 'Minha Loja' },
+  [
+    { id: '1', name: 'T-Shirt', price: 25.00, image: 'https://...', description: 'Algodão, tam S-XL' },
+    { id: '2', name: 'Boné', price: 15.00, image: 'https://...', description: 'Ajustável' },
+    { id: '3', name: 'Stickers', price: 5.00, inStock: false },
+  ]
+);
+
+// Adicionar itens ao carrinho
+checkout.addCatalogItem('1', 2);  // 2x T-Shirt = $50
+checkout.addCatalogItem('2', 1);  // 1x Boné = $15
+
+// Ver total
+console.log(checkout.catalogTotal);  // 65
+console.log(checkout.selectedItems); // [{ product: ..., quantity: 2 }, ...]
+
+// Atualizar quantidade
+checkout.setCatalogItemQuantity('1', 3);  // 3x T-Shirt = $75
+
+// Remover item
+checkout.removeCatalogItem('2');
+
+// Limpar carrinho
+checkout.clearCatalog();
+
+// Gerar link de pagamento
+const link = checkout.generatePaymentLink('bc1q...');
+```
+
+#### Como funciona na UI
+
+Quando o pagamento é aberto com `?mode=catalog`, a página de pagamento mostra:
+
+1. Um botão "Abrir Catálogo"
+2. Um modal sobreposto com grid de produtos
+3. Cada produto tem imagem, nome, descrição, preço
+4. Controlos de quantidade (+/−) por produto
+5. Indicador de "esgotado" para produtos sem stock
+6. Total calculado em tempo real
+7. Botão "Confirmar Seleção"
+
+#### Via URL (para partilhar)
+
+```typescript
+const products = [
+  { id: '1', name: 'T-Shirt', price: 25.00, image: 'https://...' },
+  { id: '2', name: 'Boné', price: 15.00 },
+];
+
+const url = `https://ghostpay-systems.vercel.app/payment?receiver=Minha+Loja&catalog=${JSON.stringify(products)}`;
+```
+
+#### Na Ghost Wallet (Android)
+
+A app detecta QR codes com parâmetro `catalog` e abre automaticamente o modal de produtos.
 
 ---
 
@@ -451,7 +516,33 @@ const link = checkout.generatePaymentLink('bc1q...', amount);
 document.querySelector('ghost-qrcode').setAttribute('data', link);
 ```
 
-### Exemplo 3: SaaS com Webhooks
+### Exemplo 3: Loja com Catálogo
+
+```typescript
+// 1. Configurar catálogo
+const checkout = createCatalogCheckout(
+  { name: 'Loja de Merch' },
+  [
+    { id: 'tshirt', name: 'T-Shirt Ghost Pay', price: 25.00, image: 'https://...' },
+    { id: 'cap', name: 'Boné Ghost Pay', price: 15.00, image: 'https://...' },
+    { id: 'sticker', name: 'Pack de Stickers', price: 5.00 },
+  ],
+  ['bitcoin', 'ethereum', 'solana']
+);
+
+// 2. Gerar link para partilhar
+const products = checkout.catalogProducts;
+const shareUrl = `https://ghostpay-systems.vercel.app/payment?receiver=Loja+de+Merch&catalog=${JSON.stringify(products)}`;
+
+// 3. Abrir página de pagamento
+window.location.href = shareUrl;
+
+// 4. Ou gerar QR code
+const qrData = `ghostpay:payment?receiver=Loja+de+Merch&catalog=${encodeURIComponent(JSON.stringify(products))}`;
+document.querySelector('ghost-qrcode').setAttribute('data', qrData);
+```
+
+### Exemplo 4: SaaS com Webhooks
 
 ```typescript
 // 1. Criar checkout com webhook
