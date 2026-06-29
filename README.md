@@ -806,6 +806,60 @@ dist/
 
 ## Security
 
+### Tamper Protection (Anti-Modification)
+
+The SDK implements **3 layers of defense** against payment amount tampering:
+
+| Layer | Mechanism | Protection |
+|-------|-----------|------------|
+| **1. HMAC Signatures** | `generatePaymentLink(address, amount, signingKey)` | Payment link is signed with HMAC-SHA256. Payment page verifies before display. |
+| **2. Link Expiration** | `timestamp` + `ttl` params in every link | Links expire after 5 minutes (default). Prevents replay attacks. |
+| **3. Blockchain Verification** | `isSecurelyConfirmed(txHash, chain)` | On-chain confirmation with minimum thresholds per chain. |
+
+**Critical**: Always pass `signingKey` to `generatePaymentLink()`:
+
+```typescript
+const checkout = new Checkout({
+  receiver: { name: 'Loja' },
+  plans: [{ id: 'basic', name: 'Plano Basico', price: 29.99, currency: 'USD' }],
+});
+
+// ❌ INSEGURO — sem signingKey, pode ser adulterado
+const link = checkout.generatePaymentLink(address);
+
+// ✅ SEGURO — com signingKey, verificacao HMAC
+const link = checkout.generatePaymentLink(address, undefined, 'my-secret-key');
+```
+
+### Confirmation Thresholds
+
+Payments are only confirmed when the blockchain reaches minimum confirmations:
+
+| Chain | Minimum Confirmations |
+|-------|----------------------|
+| Bitcoin | 3 |
+| Ethereum | 12 |
+| Solana | 32 |
+| Polygon | 128 |
+| BSC | 15 |
+
+```typescript
+const broadcaster = new BlockchainBroadcaster();
+const result = await broadcaster.isSecurelyConfirmed(txHash, 'bitcoin');
+if (result.secure) {
+  // Payment is settled with 3+ BTC confirmations
+}
+```
+
+### On-Chain Amount Verification
+
+```typescript
+const amount = await broadcaster.getTransactionAmount(txHash, 'ethereum');
+if (amount && amount >= expectedAmount) {
+  // Amount verified on-chain
+}
+```
+
 ### Security Audit Fixes Applied
 
 | Issue | Fix |
@@ -827,6 +881,10 @@ dist/
 | P2P data channel no validation | Gossip message schema validation |
 | console.error leaks internal state | Sanitized error logging |
 | Wallet export exposes raw mnemonic | Deprecation warning added |
+| Payment page ignores HMAC | HMAC verification added |
+| No link expiration | timestamp + TTL params |
+| localStorage-only tx detection | Blockchain RPC polling |
+| No minimum confirmations | Per-chain thresholds enforced |
 
 ### Best Practices
 
@@ -835,6 +893,8 @@ dist/
 - **Privacy**: Real elliptic curve math for Stealth, Pedersen, Ring, CoinJoin
 - **Webhooks**: HMAC-SHA256 signed, constant-time verification
 - **Input Validation**: Transaction deserialization validates all fields
+- **Payment Links**: Always use `signingKey` — unsigned links are vulnerable to tampering
+- **Confirmation**: Use `isSecurelyConfirmed()` — never trust unconfirmed transactions
 
 ---
 

@@ -1336,6 +1336,67 @@
         const paramDescription = urlParams.get('description');
         const paramPlans = urlParams.get('plans');
         const paramApiKey = urlParams.get('apiKey');
+        const paramSig = urlParams.get('sig');
+        const paramTimestamp = urlParams.get('timestamp');
+        const paramTTL = urlParams.get('ttl');
+
+        // ============================================
+        // SECURITY: Link expiration check
+        // ============================================
+        if (paramTimestamp) {
+            const linkAge = Date.now() - parseInt(paramTimestamp, 10);
+            const ttl = parseInt(paramTTL || '300000', 10);
+            if (linkAge > ttl) {
+                document.body.innerHTML = `
+                    <div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui;color:#fff;background:#000;">
+                        <div style="text-align:center;max-width:400px;padding:2rem;">
+                            <h1 style="font-size:1.5rem;margin-bottom:1rem;">Link expirado</h1>
+                            <p style="color:#999;margin-bottom:1.5rem;">Este link de pagamento expirou. Solicite um novo link ao recebedor.</p>
+                        </div>
+                    </div>`;
+                throw new Error('Payment link expired');
+            }
+        }
+
+        // ============================================
+        // SECURITY: HMAC Signature verification
+        // ============================================
+        let signatureValid = false;
+        if (paramSig) {
+            const verificationKey = urlParams.get('key');
+            if (verificationKey) {
+                try {
+                    const verifyParams = new URLSearchParams(window.location.search);
+                    verifyParams.delete('sig');
+                    verifyParams.delete('key');
+                    const payloadStr = verifyParams.toString();
+
+                    const encoder = new TextEncoder();
+                    const keyData = encoder.encode(verificationKey);
+                    const msgData = encoder.encode(payloadStr);
+
+                    const key = await crypto.subtle.importKey(
+                        'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']
+                    );
+                    const sigBytes = hexToBytes(paramSig);
+                    signatureValid = await crypto.subtle.verify('HMAC', key, sigBytes, msgData);
+
+                    if (!signatureValid) {
+                        document.body.innerHTML = `
+                            <div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui;color:#fff;background:#000;">
+                                <div style="text-align:center;max-width:400px;padding:2rem;">
+                                    <h1 style="font-size:1.5rem;margin-bottom:1rem;">Link adulterado</h1>
+                                    <p style="color:#FF4444;margin-bottom:1.5rem;">A assinatura deste link de pagamento e invalida. O link foi modificado. Recusado por seguranca.</p>
+                                </div>
+                            </div>`;
+                        throw new Error('Invalid HMAC signature');
+                    }
+                } catch (e) {
+                    if (e.message.includes('Invalid HMAC')) throw e;
+                    console.error('[GhostPay] Signature verification error:', e);
+                }
+            }
+        }
 
         let parsedPlans = null;
         if (paramPlans) {
@@ -1762,8 +1823,10 @@
             document.getElementById('qr-chain-display').textContent = getChainLabel(selectedChain);
             document.getElementById('qr-address-display').textContent = receiverAddress || 'Endereço não configurado';
 
-            // Generate QR code with ghostpay: URI for native app
-            const qrData = `ghostpay:payment?receiver=${encodeURIComponent(paymentData.receiver)}&amount=${paymentData.amount}&currency=${paymentData.currency}&chain=${paymentData.chain}&address=${encodeURIComponent(paymentData.address)}&nonce=${paymentData.nonce}`;
+            // Generate QR code with ghostpay: URI for native app (includes timestamp+TTL for expiration)
+            const linkTimestamp = Date.now();
+            const linkTTL = 300000;
+            const qrData = `ghostpay:payment?receiver=${encodeURIComponent(paymentData.receiver)}&amount=${paymentData.amount}&currency=${paymentData.currency}&chain=${paymentData.chain}&address=${encodeURIComponent(paymentData.address)}&nonce=${paymentData.nonce}&timestamp=${linkTimestamp}&ttl=${linkTTL}`;
             const qr = document.getElementById('qr-code');
             qr.setAttribute('data', qrData);
 
@@ -1782,23 +1845,39 @@
             return labels[chain] || chain;
         }
 
+        let lastTxHash = null;
+
+        function setLastTxHash(hash) {
+            lastTxHash = hash;
+        }
+
         function startStatusPolling() {
-            // In production, this would poll the mesh network or blockchain
-            // For now, we just simulate checking localStorage
-            setInterval(() => {
-                if (!paymentData) return;
+            // Poll blockchain RPC every 15 seconds for real confirmation
+            setInterval(async () => {
+                if (!lastTxHash || !paymentData) return;
 
-                const txs = JSON.parse(localStorage.getItem('ghost_transactions') || '[]');
-                const amount = checkout.mode === 'catalog' ? checkout.catalogTotal : selectedPlan?.price;
-                const found = txs.find(tx =>
-                    tx.nonce === paymentData.nonce ||
-                    (tx.to === receiverAddress && tx.amount === String(amount))
-                );
-
-                if (found && found.status === 'confirmed') {
-                    updatePaymentStatus('confirmed');
+                try {
+                    const broadcaster = new SDK.BlockchainBroadcaster();
+                    const result = await broadcaster.isSecurelyConfirmed(lastTxHash, selectedChain);
+                    if (result.secure) {
+                        updatePaymentStatus('confirmed');
+                    } else if (result.confirmations > 0) {
+                        updatePaymentStatus('pending');
+                    }
+                } catch (e) {
+                    // Also check localStorage for in-app transactions
+                    try {
+                        const txs = JSON.parse(localStorage.getItem('ghost_transactions') || '[]');
+                        const found = txs.find(tx =>
+                            tx.nonce === paymentData.nonce ||
+                            tx.hash === lastTxHash
+                        );
+                        if (found && found.status === 'confirmed') {
+                            updatePaymentStatus('confirmed');
+                        }
+                    } catch { /* ignore */ }
                 }
-            }, 5000);
+            }, 15000);
         }
 
         function updatePaymentStatus(status) {

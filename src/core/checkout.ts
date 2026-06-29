@@ -219,6 +219,10 @@ export class Checkout {
     const currency = this.getCurrency();
     const nonce = this._generateNonce();
 
+    // Add timestamp + TTL for link expiration (default 5 minutes)
+    const timestamp = String(Date.now());
+    const ttl = String(300_000);
+
     const params = new URLSearchParams({
       receiver: this._config.receiver.name,
       amount: String(amount),
@@ -226,6 +230,8 @@ export class Checkout {
       chain: this._selectedChain,
       address,
       nonce,
+      timestamp,
+      ttl,
     });
 
     if (this._selectedPlan) {
@@ -253,6 +259,13 @@ export class Checkout {
         new TextEncoder().encode(params.toString())
       );
       params.set('sig', bytesToHex(mac));
+    } else if (this._transactionMode === 'hosted') {
+      // Warn: hosted mode without signing key is vulnerable to tampering
+      console.warn(
+        '[GhostPay] SECURITY WARNING: No signingKey provided for hosted payment link. ' +
+        'Without HMAC signature, the payment amount can be tampered with. ' +
+        'Pass a signingKey to generatePaymentLink() to enable tamper protection.'
+      );
     }
 
     if (this._transactionMode === 'hosted') {

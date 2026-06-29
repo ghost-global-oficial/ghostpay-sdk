@@ -59,6 +59,15 @@ export interface BroadcastConfig {
 // Blockchain Broadcaster
 // ============================================
 
+// Minimum confirmations before payment is considered settled
+export const MIN_CONFIRMATIONS: Record<ChainId, number> = {
+  bitcoin: 3,
+  ethereum: 12,
+  solana: 32,
+  polygon: 128,
+  bsc: 15,
+};
+
 export class BlockchainBroadcaster {
   private configs: Map<ChainId, BroadcastConfig> = new Map();
 
@@ -152,6 +161,87 @@ export class BlockchainBroadcaster {
         return this.getSolanaTxStatus(txHash, config);
       default:
         throw new Error(`Unsupported chain: ${chain}`);
+    }
+  }
+
+  /**
+   * Check if a transaction is securely confirmed (meets minimum thresholds)
+   */
+  async isSecurelyConfirmed(txHash: string, chain: ChainId): Promise<{
+    secure: boolean;
+    confirmations: number;
+    required: number;
+    blockHeight?: number;
+  }> {
+    const status = await this.getTransactionStatus(txHash, chain);
+    const required = MIN_CONFIRMATIONS[chain];
+    return {
+      secure: status.confirmed && status.confirmations >= required,
+      confirmations: status.confirmations,
+      required,
+      blockHeight: status.blockHeight,
+    };
+  }
+
+  /**
+   * Get the amount transferred in a transaction (for on-chain verification)
+   */
+  async getTransactionAmount(txHash: string, chain: ChainId): Promise<number | null> {
+    const config = this.configs.get(chain)!;
+
+    try {
+      switch (chain) {
+        case 'bitcoin': {
+          const safeTxHash = sanitizeUrlParam(txHash, SAFE_TXHASH, 'txHash');
+          const rpcUrls = this.getAllowedRpcUrls('bitcoin');
+          const response = await this.rpcCall(`${rpcUrls[0]}/tx/${safeTxHash}`, config);
+          // Sum of vout values = total output amount
+          return response.vout?.reduce((sum: number, o: any) => sum + (o.value || 0), 0) || null;
+        }
+        case 'ethereum':
+        case 'polygon':
+        case 'bsc': {
+          const rpcUrls = this.getAllowedRpcUrls(chain);
+          const response = await this.rpcCall(rpcUrls[0]!, config, {
+            method: 'POST',
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_getTransactionByHash',
+              params: [`0x${txHash.replace(/^0x/, '')}`],
+              id: Date.now(),
+            }),
+          });
+          if (response?.result?.value) {
+            return parseInt(response.result.value, 16) / 1e18;
+          }
+          return null;
+        }
+        case 'solana': {
+          const rpcUrls = this.getAllowedRpcUrls('solana');
+          const response = await this.rpcCall(rpcUrls[0]!, config, {
+            method: 'POST',
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'getTransaction',
+              params: [
+                txHash.replace(/^0x/, ''),
+                { encoding: 'jsonParsed' },
+              ],
+              id: 1,
+            }),
+          });
+          if (response?.result?.meta?.postBalances && response?.result?.meta?.preBalances) {
+            const pre = response.result.meta.preBalances[0] || 0;
+            const post = response.result.meta.postBalances[0] || 0;
+            return (pre - post) / 1e9;
+          }
+          return null;
+        }
+        default:
+          return null;
+      }
+    } catch {
+      return null;
     }
   }
 
