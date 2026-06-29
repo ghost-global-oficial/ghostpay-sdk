@@ -183,12 +183,30 @@ const products = [
   { id: '2', name: 'Boné', price: 15.00 },
 ];
 
+// Produtos disponíveis
 const url = `https://ghostpay-systems.vercel.app/payment?receiver=Minha+Loja&catalog=${JSON.stringify(products)}`;
+
+// Produtos já selecionados (carrinho)
+const urlWithItems = `https://ghostpay-systems.vercel.app/payment?receiver=Minha+Loja&catalog=${JSON.stringify(products)}&items=1:2,2:1`;
+// → T-Shirt x2 + Boné x1 já aparecem na lista à esquerda
 ```
+
+#### Formato do parâmetro `items=`
+
+```
+items=productId:quantity,productId:quantity
+```
+
+Exemplos:
+- `items=1:2` → Produto "1", quantidade 2
+- `items=tshirt:2,cap:1` → T-Shirt x2 + Boné x1
+- `items=a:5,b:3,c:1` → 3 produtos diferentes
+
+**Útil para lojas online com carrinho:** O backend gera o link com `items=` já preenchido, e o utilizador vê os itens na payment page sem precisar abrir o catálogo.
 
 #### Na Ghost Wallet (Android)
 
-A app detecta QR codes com parâmetro `catalog` e abre automaticamente o modal de produtos.
+A app detecta QR codes com parâmetro `catalog` e abre automaticamente o modal de produtos. Ao confirmar, gera a URL com `items=` para pré-selecionar os itens na payment page.
 
 ---
 
